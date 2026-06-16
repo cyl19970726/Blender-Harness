@@ -10,7 +10,9 @@ Produces:
                      derived from edge-tts WordBoundary timings, split on CJK
                      punctuation so each subtitle line is short + mobile-readable.
 
-Default voice zh-CN-YunxiNeural (lively young male) suits 揭小贤. No API key needed.
+Canonical 揭小贤 voice = zh-CN-YunxiaNeural (edge-tts boy/child voice), rate -6%.
+This MATCHES the shipped gongfucha narration (verified by F0/timbre/duration); every
+magnet must use it so the series voice stays consistent. No API key needed.
 """
 import sys, os, json, asyncio, edge_tts
 
@@ -25,7 +27,7 @@ def load_text(arg):
 async def main():
     text = load_text(sys.argv[1])
     out = sys.argv[2]
-    voice = sys.argv[3] if len(sys.argv) > 3 else "zh-CN-YunxiNeural"
+    voice = sys.argv[3] if len(sys.argv) > 3 else "zh-CN-YunxiaNeural"
     rate = sys.argv[4] if len(sys.argv) > 4 else "-6%"   # slightly slower = clearer
     pitch = sys.argv[5] if len(sys.argv) > 5 else "+0Hz"
 
