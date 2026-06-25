@@ -1,0 +1,269 @@
+{
+  "schema": "jygc.ar-assets.v1",
+  "updated": "2026-06-25",
+  "policy": {
+    "canonicalDecision": "docs/migration/decisions/0006-mini-program-ar-mainline.md",
+    "productMainline": "wechat-miniprogram-xr",
+    "globalSkillPolicy": "Do not edit global skills or create global symlinks for this project phase.",
+    "deprecatedRuntime": [
+      "h5-mindar-aframe"
+    ]
+  },
+  "items": [
+    {
+      "id": "jinxianmen-guozhiqi-model-v1",
+      "category": "scenic-spot-ar",
+      "paths": [
+        "public/ar/spots/jinxianmen/libai/guozhiqi-toon-anim.glb"
+      ],
+      "status": "active-candidate",
+      "runtimeTarget": "wechat-miniprogram-xr-frame",
+      "reason": "Primary candidate for the Jinxianmen Guo Zhiqi character-presence AR direction.",
+      "nextAction": "Import into a WeChat XR-Frame page, set scale/lighting/animation defaults, and record true-device evidence."
+    },
+    {
+      "id": "jinxianmen-guozhiqi-marker-v1",
+      "category": "recognition-target",
+      "paths": [
+        "public/ar/spots/jinxianmen/libai/marker.jpg"
+      ],
+      "status": "active-candidate",
+      "runtimeTarget": "wechat-miniprogram-visionkit-or-xr-image-tracking",
+      "reason": "Candidate V1 trigger target for Jinxianmen Guo Zhiqi AR.",
+      "nextAction": "Measure true-device recognition quality, viewing distance, lighting tolerance, and fallback UX."
+    },
+    {
+      "id": "jinxianmen-guozhiqi-concepts",
+      "category": "art-direction",
+      "paths": [
+        "public/ar/spots/jinxianmen/libai/guozhiqi-concept-1.png",
+        "public/ar/spots/jinxianmen/libai/guozhiqi-concept-2.png",
+        "public/ar/spots/jinxianmen/libai/guozhiqi-concept-3.png",
+        "public/ar/spots/jinxianmen/libai/toon-1.png",
+        "public/ar/spots/jinxianmen/libai/toon-2.png",
+        "public/ar/spots/jinxianmen/libai/toon-3.png"
+      ],
+      "status": "active-candidate",
+      "runtimeTarget": "art-review",
+      "reason": "Style references for the Jinxianmen character route.",
+      "nextAction": "Select one visual direction before model polish and UI copy lock."
+    },
+    {
+      "id": "jinxianmen-h5-targets",
+      "category": "legacy-h5-ar",
+      "paths": [
+        "public/ar/spots/jinxianmen/real-target.mind",
+        "public/ar/spots/jinxianmen/target.mind",
+        "public/ar/spots/jinxianmen/user-target.mind",
+        "public/ar/spots/jinxianmen/user-upper-target.mind"
+      ],
+      "status": "deprecated",
+      "runtimeTarget": "none",
+      "reason": "MindAR target files belong to the retired H5 AR route.",
+      "nextAction": "Keep for historical trace only; do not migrate into the mini program runtime."
+    },
+    {
+      "id": "nanpu-video-card-route",
+      "category": "failed-exploration",
+      "paths": [
+        "public/ar/magnets/nanpu-yuge/nanpu-ar.mp4",
+        "public/ar/magnets/nanpu-yuge/alpha/b4_yuhuo_sbs.mp4",
+        "public/ar/magnets/nanpu-yuge/alpha/xiaoxian_sbs.mp4"
+      ],
+      "status": "rejected",
+      "runtimeTarget": "none",
+      "reason": "Mini program device run is useful evidence, but the video-card product route is not the final AR direction.",
+      "nextAction": "Retain as negative evidence; do not copy this pattern to Jinxianmen or fridge magnets."
+    },
+    {
+      "id": "fridge-magnet-gongfucha",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/gongfucha/magnet.webp",
+        "public/ar/magnets/gongfucha/narration.mp3",
+        "public/ar/magnets/gongfucha/narration.cues.json",
+        "public/ar/magnets/gongfucha/teapot.glb",
+        "public/ar/magnets/gongfucha/gongfucha.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "12M",
+      "reusableParts": [
+        "magnet art",
+        "narration",
+        "teapot model after size/performance review"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "Contains reusable tea-culture content, but the H5/MindAR runtime is retired and the GLB is too large for blind mini program package import.",
+      "nextAction": "Re-evaluate after Jinxianmen XR V1; decide CloudBase/CDN before using the GLB."
+    },
+    {
+      "id": "fridge-magnet-haolao",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/haolao/magnet.webp",
+        "public/ar/magnets/haolao/narration.mp3",
+        "public/ar/magnets/haolao/narration.txt",
+        "public/ar/magnets/haolao/haolao.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "888K",
+      "reusableParts": [
+        "magnet art",
+        "narration"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "Small enough to keep as source material, but not selected for the mini program XR mainline.",
+      "nextAction": "Keep in archive-candidate until a fridge magnet product route is re-opened."
+    },
+    {
+      "id": "fridge-magnet-hongtouchuan",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/hongtouchuan/magnet.webp",
+        "public/ar/magnets/hongtouchuan/narration.mp3",
+        "public/ar/magnets/hongtouchuan/narration.txt",
+        "public/ar/magnets/hongtouchuan/hongtouchuan.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "796K",
+      "reusableParts": [
+        "magnet art",
+        "narration"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "Reusable as content source, but not active mini program XR runtime material.",
+      "nextAction": "Re-evaluate only after a mini program fridge magnet route is selected."
+    },
+    {
+      "id": "fridge-magnet-jinxianmen",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/jinxianmen/magnet.webp",
+        "public/ar/magnets/jinxianmen/narration.mp3",
+        "public/ar/magnets/jinxianmen/narration.txt",
+        "public/ar/magnets/jinxianmen/jinxianmen.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "1.0M",
+      "reusableParts": [
+        "magnet art",
+        "narration"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "This is the old Jinxianmen magnet route, not the current scenic-spot Guo Zhiqi AR route.",
+      "nextAction": "Keep separate from Jinxianmen Guo Zhiqi V1 to avoid product-route confusion."
+    },
+    {
+      "id": "fridge-magnet-nanpu-support-assets",
+      "category": "failed-exploration-support",
+      "paths": [
+        "public/ar/magnets/nanpu-yuge/magnet.webp",
+        "public/ar/magnets/nanpu-yuge/narration.mp3",
+        "public/ar/magnets/nanpu-yuge/narration.txt",
+        "public/ar/magnets/nanpu-yuge/stage",
+        "public/ar/magnets/nanpu-yuge/fx",
+        "public/ar/magnets/nanpu-yuge/nanpu-yuge.mind"
+      ],
+      "status": "evidence-only",
+      "runtimeTarget": "none",
+      "approxSize": "7.0M including rejected video files",
+      "reusableParts": [
+        "selected narration or art only after re-brief"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "video-card composition",
+        "H5 magnet route"
+      ],
+      "reason": "Nanpu proves exploration history and some content ideas, but its product route is rejected.",
+      "nextAction": "Do not use as a template; keep only as audit evidence unless a new mini program route is briefed."
+    },
+    {
+      "id": "fridge-magnet-puning-dougan",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/puning-dougan/magnet.webp",
+        "public/ar/magnets/puning-dougan/narration.mp3",
+        "public/ar/magnets/puning-dougan/narration.txt",
+        "public/ar/magnets/puning-dougan/puning-dougan.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "736K",
+      "reusableParts": [
+        "magnet art",
+        "narration"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "Reusable as content source, but not active mini program XR runtime material.",
+      "nextAction": "Re-evaluate only after a mini program fridge magnet route is selected."
+    },
+    {
+      "id": "fridge-magnet-shuangfeng-qifu",
+      "category": "legacy-fridge-magnet-ar",
+      "paths": [
+        "public/ar/magnets/shuangfeng-qifu/magnet.webp",
+        "public/ar/magnets/shuangfeng-qifu/narration.mp3",
+        "public/ar/magnets/shuangfeng-qifu/narration.txt",
+        "public/ar/magnets/shuangfeng-qifu/shuangfeng-qifu.mind"
+      ],
+      "status": "archive-candidate",
+      "runtimeTarget": "none",
+      "approxSize": "1.0M",
+      "reusableParts": [
+        "magnet art",
+        "narration"
+      ],
+      "retiredParts": [
+        "MindAR target",
+        "H5 magnet route"
+      ],
+      "reason": "Reusable as content source, but not active mini program XR runtime material.",
+      "nextAction": "Re-evaluate only after a mini program fridge magnet route is selected."
+    },
+    {
+      "id": "jiexiaoxian-miniprogram-mascots",
+      "category": "miniprogram-ui-assets",
+      "paths": [
+        "wechat-gucheng/miniprogram/assets/mascots/jie-xiaoxian-bracelet-jinxianmen-card.webp",
+        "wechat-gucheng/miniprogram/assets/mascots/jie-xiaoxian-bracelet-jinxianmen-cutout.webp",
+        "wechat-gucheng/miniprogram/assets/mascots/mascot-jinxianmen.webp",
+        "wechat-gucheng/miniprogram/assets/mascots/mascot-stampbook.webp"
+      ],
+      "status": "active",
+      "runtimeTarget": "wechat-miniprogram-ui",
+      "reason": "Current mini program UI uses the project-owned Jie Xiaoxian asset set.",
+      "nextAction": "Keep using the same source-of-truth asset family when AR UI needs Jie Xiaoxian."
+    },
+    {
+      "id": "stampbook-miniprogram-assets",
+      "category": "miniprogram-ui-assets",
+      "paths": [
+        "wechat-gucheng/miniprogram/assets/stamps"
+      ],
+      "status": "active",
+      "runtimeTarget": "wechat-miniprogram-ui",
+      "reason": "Current stampbook assets support the non-AR business acceptance lines.",
+      "nextAction": "No AR migration action; keep listed so product imagery is not confused with deprecated H5 AR assets."
+    }
+  ]
+}
