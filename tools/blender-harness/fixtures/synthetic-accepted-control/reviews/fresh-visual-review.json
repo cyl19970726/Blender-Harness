@@ -1,0 +1,22 @@
+{
+  "role": "fresh_visual",
+  "rubric_version": "synthetic-control-v0",
+  "verdict": "accept",
+  "scores": {
+    "motion_camera": 5,
+    "edge_ownership": 5,
+    "asset_integration_regression": 5,
+    "high_coverage_risk": 5,
+    "source_honesty": 5
+  },
+  "hard_reject_hits": [],
+  "findings": [
+    "Synthetic control finding: no hard-reject condition fired; all scored axes pass. This record exists solely to exercise the checker's accepted path and carries no real visual evidence."
+  ],
+  "downstream": {
+    "full_render": true,
+    "wechat_runtime": true
+  },
+  "reviewer_nickname": "synthetic-control",
+  "reason": "Synthetic accept used to prove the checker resolves a fully-reviewed, all-accept candidate to exit 0. Not a real review."
+}

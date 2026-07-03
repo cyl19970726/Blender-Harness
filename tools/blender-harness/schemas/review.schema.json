@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jygc.blender-harness.review.v1",
+  "title": "Blender Harness Review",
+  "description": "Single reviewer verdict, written to reviews/<role>-review.json (e.g. reviews/model-review.json, reviews/fresh-visual-review.json) and consumed by check-gate-status.mjs. One file per role per gate run. Historical precedent: this generalizes the ad-hoc 'visual_acceptance' block found in tiantan-replica-v03 Gate D manifests (decision/reviewer_agent/reviewer_nickname/scores/reason/blocks/next_gate) into a reusable per-role review record. A review with verdict 'reject' or 'conditional' never unlocks downstream on its own — aggregation rules live in check-gate-status.mjs, not in this file.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["role", "rubric_version", "verdict", "hard_reject_hits", "findings", "downstream"],
+  "properties": {
+    "role": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reviewer role this record speaks for, e.g. 'model', 'rig', 'animation', 'pass', 'fresh-visual', 'runtime'. Must match the role key referenced from gate-status.json's reviews[].role."
+    },
+    "rubric_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version tag of the frozen rubric file (e.g. rubrics/rubric-v01.md) this review was scored against, per issue #131 'rubric frozen as versioned file, never re-written inline per review'. Every review must cite a version; free prompt text is not a substitute."
+    },
+    "verdict": {
+      "enum": ["accept", "conditional", "reject"],
+      "description": "Reviewer's terminal call. 'accept' allows this role's requirement to be satisfied. 'conditional' explicitly does NOT unlock downstream (treated as blocking by the aggregator, distinct from a hard 'reject' only for messaging/diagnosis purposes). 'reject' blocks aggregation outright."
+    },
+    "scores": {
+      "type": "object",
+      "description": "Optional named scoring axes (e.g. motion_camera, edge_ownership, asset_integration_regression, high_coverage_risk, source_honesty, reference_fidelity, model_finish, runtime_readiness), each typically 0-4 per the acceptance scorecard. Intentionally unconstrained: axis names and ranges vary by role and gate, and per issue #131 hardening, numeric scores must never substitute for hard_reject_hits as the actual pass/fail evidence — they are context, not the decision."
+    },
+    "hard_reject_hits": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Names/ids of hard-reject conditions (from rubrics/failure-modes.md) that this candidate triggered, e.g. 'dragon_dominates_key_occlusion_frames', 'full_coverage_wipe_without_polished_motivation'. Empty array means no hard-reject condition fired. This is the field that actually does the work of a reject verdict, not the numeric scores."
+    },
+    "findings": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Reviewer's concrete, evidence-citing observations (must reference specific frames/boards per issue #131's 'reference vs candidate side-by-side' and 'motion read from video/dense strip, not a single still' hardening rules). Self-serving explanations authored by the candidate's own builder must be labeled as such and are not acceptable findings on their own."
+    },
+    "downstream": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["full_render", "wechat_runtime"],
+      "properties": {
+        "full_render": {
+          "type": "boolean",
+          "description": "Whether this reviewer's verdict permits proceeding to full-length/full-resolution render work. False unless verdict is 'accept'."
+        },
+        "wechat_runtime": {
+          "type": "boolean",
+          "description": "Whether this reviewer's verdict permits proceeding to WeChat mini-program runtime validation. Per issue #131, an offline visual gate must accept before this may be true; a runtime smoke pass must never set this retroactively to true for a rejected candidate."
+        }
+      },
+      "description": "This role's opinion on whether specific downstream actions may proceed. This is advisory input to check-gate-status.mjs's aggregation, not itself the authoritative unlock — gate-status.json's downstream_allowed is the single source of truth."
+    },
+    "reviewer_agent": {
+      "type": "string",
+      "description": "Optional identifier (session id or similar) of the agent/human that produced this review, for provenance. Historical field name from tiantan-replica-v03 visual_acceptance blocks."
+    },
+    "reviewer_nickname": {
+      "type": "string",
+      "description": "Optional human-readable name/alias of the reviewer, for provenance and readability in review.md summaries."
+    },
+    "reason": {
+      "type": "string",
+      "description": "Optional short prose summary of why the verdict was reached. Supplements findings/hard_reject_hits; must not be the only evidence for a reject or accept."
+    },
+    "blocks": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Optional list of named downstream artifacts/steps this review's verdict blocks, e.g. 'full_463_frame_reference_candidate', 'wechat_runtime_validation'. Historical field from tiantan-replica-v03 visual_acceptance.blocks."
+    },
+    "next_gate": {
+      "type": "string",
+      "description": "Optional prose describing the required next step/repair gate if this review did not accept, e.g. 'Gate D v02 repair: rebuild dragon occluder...'. Historical field from tiantan-replica-v03 visual_acceptance.next_gate."
+    }
+  }
+}

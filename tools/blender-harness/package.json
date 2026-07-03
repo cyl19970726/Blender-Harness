@@ -1,0 +1,11 @@
+{
+  "name": "blender-harness",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Blender 作业环境:感知/行动/反馈三层基础设施(issue #131)。本 PR 只落反馈层。",
+  "type": "module",
+  "scripts": {
+    "test": "node src/run-regression.mjs",
+    "check-gate-status": "node src/check-gate-status.mjs"
+  }
+}

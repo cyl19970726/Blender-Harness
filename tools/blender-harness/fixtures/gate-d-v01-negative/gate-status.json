@@ -1,0 +1,17 @@
+{
+  "candidate_id": "gate-d-reduced-animation-candidate-v01",
+  "gate": "Gate D",
+  "status": "visual_rejected",
+  "downstream_allowed": false,
+  "required_reviews": ["fresh_visual"],
+  "reviews": [
+    { "role": "fresh_visual", "file": "reviews/fresh-visual-review.json" }
+  ],
+  "forbidden_next_outputs": [
+    "full-463.mp4",
+    "full-463/**",
+    "wechat-runtime-qr.png",
+    "wechat-runtime/**"
+  ],
+  "notes": "Derived faithfully from legacy/manifest.json (visual_acceptance block), legacy/audit.json, and legacy/acceptance-review.md. Independent visual review (2026-06-30, reviewer 019f1856-0786-7171-ab25-c466e115465f / Avicenna) REJECTED this Gate D reduced 121-frame candidate: the high/full-coverage alpha frames read as a low-poly proxy sphere/tube, not a story-motivated organic dragon wipe. Full-coverage frames 72/116/117 named in the review. Blocks full 463-frame animation, WeChat runtime validation, and final object-pass/SBS acceptance until a separate Gate D v02 is independently accepted. This candidate must never resolve to accepted or downstream_allowed:true; if it does, that is a checker bug, not a fixture bug."
+}
