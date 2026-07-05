@@ -93,15 +93,41 @@ def _actions(args):
     return ("SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob")
 
 
+def _encode_file(path):
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
+
+
+def _parse_multiview(values):
+    out = []
+    for value in values or []:
+        if "=" not in value:
+            sys.exit("--multiview 需要 VIEW=PATH,例如 --multiview back=back.png")
+        view_type, path = value.split("=", 1)
+        view_type = view_type.strip()
+        path = path.strip()
+        if not view_type or not path:
+            sys.exit("--multiview 需要 VIEW=PATH,例如 --multiview back=back.png")
+        out.append({
+            "ViewType": view_type,
+            "ViewImageBase64": _encode_file(path),
+        })
+    return out
+
+
 def _payload(args):
     p = {}
+    if getattr(args, "model", None):
+        p["Model"] = args.model
     if getattr(args, "image", None):
-        with open(args.image, "rb") as f:
-            p["ImageBase64"] = base64.b64encode(f.read()).decode()
+        p["ImageBase64"] = _encode_file(args.image)
     if getattr(args, "image_url", None):
         p["ImageUrl"] = args.image_url
     if getattr(args, "prompt", None):
         p["Prompt"] = args.prompt
+    multiview = _parse_multiview(getattr(args, "multiview", None))
+    if multiview:
+        p["MultiViewImages"] = multiview
     if getattr(args, "format", None):
         p["ResultFormat"] = args.format
     if getattr(args, "pbr", False):
@@ -180,6 +206,9 @@ def main():
         s.add_argument("--image")
         s.add_argument("--image-url", dest="image_url")
         s.add_argument("--prompt")
+        s.add_argument("--model", help="3.0/3.1")
+        s.add_argument("--multiview", action="append", default=[],
+                       help="Add a multi-view image as VIEW=PATH, e.g. back=back.png. Repeatable.")
         s.add_argument("--format", default="GLB", help="OBJ/GLB/STL/USDZ/FBX")
         s.add_argument("--pbr", action="store_true")
         s.add_argument("--faces", type=int)
