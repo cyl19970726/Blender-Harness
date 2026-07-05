@@ -93,6 +93,17 @@ description: >-
 
 **一句话边界**:混元 API 可以帮我们生成 raw geometry、parts、topology、UV、texture、rig、motion source;**Blender harness 决定它能不能进入 AR 预渲染生产**。
 
+### 项目叠加规则:揭阳古城长身龙
+
+当对象是揭阳古城东方长身龙时,不要只按 API 能力判断。项目级路线和 gate 见
+`jygc-dragon-rig-pipeline`:
+
+- Hunyuan 可以生成完整整龙 raw source、组件拆分、智能拓扑、UV、纹理、绑骨和动作源候选。
+- 这些输出全部必须落地 manifest、导入 Blender、出多视图 board、经过独立 review。
+- 完整整龙 source 是一条可探索路线,但不是一键成品路线。
+- 长身龙最终 rig 默认回 Blender 走 Spline IK / B-Bones / curve controls。
+- 高面数 Hunyuan 输出只能作为 source / sculpt / texture reference;runtime 和动画 mesh 必须另过 retopo/降面/优化 gate。
+
 ## 1.2 Hunyuan → Blender 生产接力(每个模块都必须落地和验收)
 
 每次调用混元 API 后,不得只保留临时 COS URL。所有产物必须落入候选目录并写 manifest。建议目录:
