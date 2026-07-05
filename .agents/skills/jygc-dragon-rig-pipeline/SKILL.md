@@ -98,7 +98,9 @@ Before calling Hunyuan, the source sheet must prove:
 - front, side, back, top, and hero45 are visually consistent;
 - head style inherits the accepted enamel dragon-head direction;
 - long body is long enough to coil/orbit, not a short snake;
-- four limbs and five claws are visible and planned;
+- at least four limb groups are visible and planned; for the long-body AR
+  direction, six visible limbs / three pairs may be used when it improves
+  orbit readability, but it must not read as an insect or centipede;
 - belly plates run continuously from neck through tail;
 - dorsal fins / mane / tail plume have direction and rhythm;
 - palette is jade/teal/cream/coral/brass, not full-gold toy;
