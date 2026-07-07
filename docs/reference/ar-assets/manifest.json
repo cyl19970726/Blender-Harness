@@ -1,6 +1,6 @@
 {
   "schema": "jygc.ar-assets.v1",
-  "updated": "2026-07-03",
+  "updated": "2026-07-07",
   "policy": {
     "canonicalDecision": "docs/migration/decisions/0006-mini-program-ar-mainline.md",
     "productMainline": "wechat-miniprogram-xr",
@@ -62,6 +62,19 @@
       "runtimeTarget": "wechat-miniprogram-ui",
       "reason": "Current mini program UI uses the project-owned Jie Xiaoxian asset set.",
       "nextAction": "Keep using the same source-of-truth asset family when AR UI needs Jie Xiaoxian."
+    },
+    {
+      "id": "jiexiaoxian-v2-source-reference",
+      "category": "ip-character-source",
+      "paths": [
+        "_assets-src/jiexiaoxian-v2/PROVENANCE.md",
+        "_assets-src/jiexiaoxian-v2/manifests/source-manifest.json",
+        "_assets-src/jiexiaoxian-v2/01_3d_ready_turnaround/jiexiaoxian-v2-turnaround-reference-v01.png"
+      ],
+      "status": "active-candidate",
+      "runtimeTarget": "blender-harness-source-only",
+      "reason": "User-provided Jie Xiaoxian v2 multiview reference copied into the source package for issue #153. It is a style/proportion/turnaround reference, not a final 3D-ready neutral sheet.",
+      "nextAction": "Produce high-resolution orthographic neutral turnaround, accessory split, material references, and accessory ownership matrix before Hunyuan generation."
     },
     {
       "id": "stampbook-miniprogram-assets",
