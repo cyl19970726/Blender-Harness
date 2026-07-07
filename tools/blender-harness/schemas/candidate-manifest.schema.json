@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jygc.blender-harness.candidate-manifest.v1",
+  "title": "Blender Harness Candidate Manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["candidate_id", "asset_id", "asset_profile", "current_gate", "source"],
+  "properties": {
+    "candidate_id": { "type": "string", "minLength": 1 },
+    "asset_id": { "type": "string", "minLength": 1 },
+    "asset_profile": {
+      "enum": ["long_creature", "humanoid_character", "historical_figure", "building_prop", "product_prop"]
+    },
+    "current_gate": {
+      "enum": ["asset_art", "topology_uv", "rig_deformation", "animation", "source_pass"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["source_type", "license_clearance", "source_manifest_path"],
+      "properties": {
+        "source_type": {
+          "enum": ["original", "hunyuan_raw", "purchased_licensed", "manual_blender", "mixed_source", "unknown"]
+        },
+        "license_clearance": {
+          "enum": ["cleared", "internal_only", "blocked", "unknown"]
+        },
+        "source_manifest_path": { "type": "string", "minLength": 1 }
+      }
+    },
+    "notes": { "type": "string" }
+  }
+}

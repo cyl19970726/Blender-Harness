@@ -1,0 +1,28 @@
+{
+  "schema": "jygc.blender-harness.source-asset.v1",
+  "asset_id": "REPLACE_ME",
+  "asset_profile": "humanoid_character",
+  "status": "source_planning",
+  "source_package": {
+    "path": "_assets-src/REPLACE_ME",
+    "provenance_path": "_assets-src/REPLACE_ME/PROVENANCE.md",
+    "git_policy": "commit_light_sources_only"
+  },
+  "storage": {
+    "git_light_sources": [],
+    "local_artifacts": [],
+    "durable_archives": [],
+    "runtime_assets": [],
+    "git_lfs_required": false
+  },
+  "license": {
+    "source_type": "original",
+    "usage_clearance": "pending",
+    "no_ai_restriction": "unknown",
+    "notes": ""
+  },
+  "hunyuan_runs": [],
+  "blender_candidates": [],
+  "sha256": {},
+  "notes": "Large binaries are recorded here by path/URL/hash, not committed by default."
+}

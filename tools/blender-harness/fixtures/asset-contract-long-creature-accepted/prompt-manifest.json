@@ -1,0 +1,27 @@
+{
+  "candidate_id": "asset-contract-long-creature-accepted",
+  "prompt_set_version": "prompt-set-v01",
+  "prompts": [
+    {
+      "id": "asset-art-review-v01",
+      "version": "v01",
+      "path": "prompts/asset-art-review-v01.md",
+      "purpose": "Asset art Human / Agent review",
+      "used_by_roles": ["asset_art_reviewer", "fresh_visual_reviewer"]
+    },
+    {
+      "id": "reference-compare-review-v01",
+      "version": "v01",
+      "path": "prompts/reference-compare-review-v01.md",
+      "purpose": "Reference-to-candidate comparison",
+      "used_by_roles": ["asset_art_reviewer", "fresh_visual_reviewer"]
+    },
+    {
+      "id": "failure-case-checklist-v01",
+      "version": "v01",
+      "path": "prompts/failure-case-checklist-v01.md",
+      "purpose": "Shared hard-reject checklist",
+      "used_by_roles": ["asset_art_reviewer", "fresh_visual_reviewer"]
+    }
+  ]
+}

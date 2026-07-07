@@ -17,6 +17,16 @@
       "minLength": 1,
       "description": "Version tag of the frozen rubric file (e.g. rubrics/rubric-v01.md) this review was scored against, per issue #131 'rubric frozen as versioned file, never re-written inline per review'. Every review must cite a version; free prompt text is not a substitute."
     },
+    "prompt_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional id of the versioned Human / Agent prompt used to create this review, for example 'asset-art-review-v01'. Must match an entry in prompt-manifest.json when supplied."
+    },
+    "prompt_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional version of the review prompt used, for example 'v01'."
+    },
     "verdict": {
       "enum": ["accept", "conditional", "reject"],
       "description": "Reviewer's terminal call. 'accept' allows this role's requirement to be satisfied. 'conditional' explicitly does NOT unlock downstream (treated as blocking by the aggregator, distinct from a hard 'reject' only for messaging/diagnosis purposes). 'reject' blocks aggregation outright."

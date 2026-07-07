@@ -175,6 +175,31 @@ function validateReview(obj, file, role) {
   }
 }
 
+function validatePromptManifest(obj, file) {
+  const problems = [];
+  if (obj === null || typeof obj !== "object" || Array.isArray(obj)) {
+    throw new InputError(`prompt-manifest at ${file} must be a JSON object`);
+  }
+  if (typeof obj.candidate_id !== "string" || obj.candidate_id.length < 1) problems.push("missing/invalid 'candidate_id'");
+  if (typeof obj.prompt_set_version !== "string" || obj.prompt_set_version.length < 1) problems.push("missing/invalid 'prompt_set_version'");
+  if (!Array.isArray(obj.prompts)) {
+    problems.push("'prompts' must be an array");
+  } else {
+    obj.prompts.forEach((p, i) => {
+      if (p === null || typeof p !== "object" || Array.isArray(p)) {
+        problems.push(`prompts[${i}] must be an object`);
+        return;
+      }
+      for (const key of ["id", "version", "path", "purpose"]) {
+        if (typeof p[key] !== "string" || p[key].length < 1) problems.push(`prompts[${i}].${key} must be a non-empty string`);
+      }
+    });
+  }
+  if (problems.length) {
+    throw new InputError(`prompt-manifest at ${file} failed schema-shape validation:\n  - ${problems.join("\n  - ")}`);
+  }
+}
+
 // ---- tiny glob matcher for forbidden_next_outputs -------------------------
 // Supports '*' (within a path segment) and '**' (across segments). No deps.
 function globToRegExp(glob) {
@@ -250,6 +275,10 @@ function aggregate(candidateDir) {
   const gs = readJson(statusPath, "gate-status.json");
   validateGateStatus(gs, statusPath);
 
+  const promptPath = path.join(candidateDir, "prompt-manifest.json");
+  const promptManifest = fs.existsSync(promptPath) ? readJson(promptPath, "prompt-manifest.json") : null;
+  if (promptManifest) validatePromptManifest(promptManifest, promptPath);
+
   result.candidate_id = gs.candidate_id;
   result.gate = gs.gate;
   result.status = gs.status;
@@ -257,6 +286,17 @@ function aggregate(candidateDir) {
 
   const isAcceptedStatus = ACCEPTED_STATUSES.has(gs.status);
   const isRejectedStatus = REJECTED_STATUSES.has(gs.status);
+  const promptIds = new Set((promptManifest?.prompts || []).map((p) => p.id));
+
+  if (promptManifest && promptManifest.candidate_id !== gs.candidate_id) {
+    violation(
+      result,
+      "prompt_manifest_candidate_match",
+      `gate-status candidate_id=${gs.candidate_id}, prompt-manifest candidate_id=${promptManifest.candidate_id}`,
+    );
+  } else if (promptManifest) {
+    record(result, "prompt_manifest_candidate_match", true, `prompt-manifest belongs to ${promptManifest.candidate_id}`);
+  }
 
   // Load each declared review by role for lookup.
   const reviewByRole = new Map();
@@ -265,6 +305,22 @@ function aggregate(candidateDir) {
     const rv = readJson(reviewPath, `review (${entry.role})`);
     validateReview(rv, reviewPath, entry.role);
     reviewByRole.set(entry.role, { entry, review: rv, path: reviewPath });
+  }
+
+  // If a candidate carries a prompt-manifest, reviews must cite the versioned
+  // prompt they used. Older gate-status-only fixtures may omit the manifest and
+  // retain legacy behavior, but full harness candidates cannot.
+  if (promptManifest) {
+    for (const [role, found] of reviewByRole.entries()) {
+      const promptId = found.review.prompt_id;
+      if (typeof promptId !== "string" || promptId.length < 1) {
+        violation(result, "review_prompt_declared", `review '${role}' is missing prompt_id while prompt-manifest.json is present`);
+      } else if (!promptIds.has(promptId)) {
+        violation(result, "review_prompt_known", `review '${role}' prompt_id '${promptId}' is not declared in prompt-manifest.json`);
+      } else {
+        record(result, "review_prompt_known", true, `review '${role}' uses prompt '${promptId}'`);
+      }
+    }
   }
 
   // ================= RULE 3 (contract): status vs downstream_allowed ========

@@ -1,0 +1,11 @@
+{
+  "candidate_id": "REPLACE_ME",
+  "artifacts": [
+    {
+      "id": "material_preview_board",
+      "type": "board",
+      "path": "evidence/material_preview_board.png",
+      "helper_overlay": false
+    }
+  ]
+}

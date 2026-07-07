@@ -1,0 +1,16 @@
+{
+  "role": "asset_art_reviewer",
+  "prompt_id": "asset-art-review-v01",
+  "prompt_version": "v01",
+  "rubric_version": "asset-art-rubric-v01",
+  "verdict": "reject",
+  "hard_reject_hits": [],
+  "findings": [
+    "Cite exact board/frame here."
+  ],
+  "downstream": {
+    "full_render": false,
+    "wechat_runtime": false
+  },
+  "suggested_next_step": "State exactly what must happen next."
+}

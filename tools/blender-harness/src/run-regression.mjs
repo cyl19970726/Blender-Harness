@@ -1,15 +1,24 @@
 #!/usr/bin/env node
 // run-regression.mjs — npm test entry for the gate-status checker.
 //
-// Runs check-gate-status.mjs as a real subprocess against fixtures and against
-// tampered copies, and asserts the exit codes demanded by the issue #131
-// aggregation contract:
+// Runs check-gate-status.mjs and check-artifacts.mjs as real subprocesses
+// against fixtures and tampered copies. It asserts the exit codes demanded by
+// the issue #131 aggregation contract and the reusable 3D asset evidence
+// contract:
 //
 //   (a) golden negative fixture (gate-d-v01-negative)        -> exit 1 (rejected)
 //   (b) synthetic-accepted-control                            -> exit 0 (accepted)
 //   (c) tamper: delete a required review from a copy          -> exit 1 (missing review)
 //   (d) tamper: flip downstream_allowed=true while status
 //       stays rejected                                        -> exit 2 (contract violation)
+//   (e) long-creature artifact contract accepted              -> exit 0
+//   (f) head-neck helper-overlay negative                     -> exit 1
+//   (g) humanoid artifact contract accepted                   -> exit 0
+//   (h) tamper: artifact manifest candidate mismatch          -> exit 2
+//   (i) tamper: delete required prompt from manifest          -> exit 1
+//   (j) tamper: prompt path escapes harness package           -> exit 2
+//   (k) gate-status prompt manifest without review prompt_id  -> exit 2
+//   (l) gate-status prompt manifest with review prompt_id     -> exit 0
 //
 // Any failed assertion prints details and exits 1.
 
@@ -21,14 +30,25 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CHECKER = path.join(__dirname, "check-gate-status.mjs");
+const ARTIFACT_CHECKER = path.join(__dirname, "check-artifacts.mjs");
 const PKG_ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(PKG_ROOT, "fixtures");
 const NEGATIVE = path.join(FIXTURES, "gate-d-v01-negative");
 const CONTROL = path.join(FIXTURES, "synthetic-accepted-control");
+const LONG_CREATURE_CONTROL = path.join(FIXTURES, "asset-contract-long-creature-accepted");
+const HEAD_NECK_NEGATIVE = path.join(FIXTURES, "asset-art-head-neck-negative");
+const HUMANOID_CONTROL = path.join(FIXTURES, "asset-contract-humanoid-accepted");
 
 // ---- run the checker CLI and capture exit code + streams ------------------
 function runChecker(candidateDir, extraArgs = []) {
   const res = spawnSync(process.execPath, [CHECKER, candidateDir, ...extraArgs], {
+    encoding: "utf8",
+  });
+  return { code: res.status, stdout: res.stdout || "", stderr: res.stderr || "" };
+}
+
+function runArtifactChecker(candidateDir, extraArgs = []) {
+  const res = spawnSync(process.execPath, [ARTIFACT_CHECKER, candidateDir, ...extraArgs], {
     encoding: "utf8",
   });
   return { code: res.status, stdout: res.stdout || "", stderr: res.stderr || "" };
@@ -125,6 +145,116 @@ function main() {
       const run = runChecker(dir);
       assertExit("(d) tamper: downstream_allowed=true with rejected status", run.code, 2, run);
     }
+
+    // (e) asset evidence contract: long creature accepted control -> exit 0
+    {
+      const run = runArtifactChecker(LONG_CREATURE_CONTROL);
+      assertExit("(e) asset contract: long-creature accepted", run.code, 0, run);
+    }
+
+    // (f) asset evidence contract: head-neck helper overlay negative -> exit 1
+    {
+      const run = runArtifactChecker(HEAD_NECK_NEGATIVE);
+      assertExit("(f) asset contract: head-neck helper-overlay negative", run.code, 1, run);
+    }
+
+    // (g) asset evidence contract: humanoid accepted control -> exit 0
+    {
+      const run = runArtifactChecker(HUMANOID_CONTROL);
+      assertExit("(g) asset contract: humanoid accepted", run.code, 0, run);
+    }
+
+    // (h) tamper: artifact-manifest candidate_id mismatch -> exit 2
+    {
+      const dir = path.join(scratchRoot, "tamper-artifact-candidate-mismatch");
+      copyDir(LONG_CREATURE_CONTROL, dir);
+      const manifestFile = path.join(dir, "artifact-manifest.json");
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+      manifest.candidate_id = "wrong-candidate-id";
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+      const run = runArtifactChecker(dir);
+      assertExit("(h) tamper: artifact manifest candidate mismatch", run.code, 2, run);
+    }
+
+    // (i) tamper: delete a required prompt id -> exit 1
+    {
+      const dir = path.join(scratchRoot, "tamper-missing-required-prompt");
+      copyDir(LONG_CREATURE_CONTROL, dir);
+      const manifestFile = path.join(dir, "prompt-manifest.json");
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+      manifest.prompts = manifest.prompts.filter((p) => p.id !== "failure-case-checklist-v01");
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+      const run = runArtifactChecker(dir);
+      assertExit("(i) tamper: delete required prompt", run.code, 1, run);
+    }
+
+    // (j) tamper: prompt path escapes tools/blender-harness -> exit 2
+    {
+      const dir = path.join(scratchRoot, "tamper-prompt-path-escape");
+      copyDir(LONG_CREATURE_CONTROL, dir);
+      const manifestFile = path.join(dir, "prompt-manifest.json");
+      const manifest = JSON.parse(fs.readFileSync(manifestFile, "utf8"));
+      const prompt = manifest.prompts.find((p) => p.id === "asset-art-review-v01");
+      if (!prompt) {
+        failures.push({ label: "(j) setup", error: "asset-art-review-v01 prompt missing from control fixture" });
+      } else {
+        prompt.path = "../README.md";
+      }
+      fs.writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+      const run = runArtifactChecker(dir);
+      assertExit("(j) tamper: prompt path escapes harness package", run.code, 2, run);
+    }
+
+    // (k) gate-status: prompt manifest present but review omits prompt_id -> exit 2
+    {
+      const dir = path.join(scratchRoot, "tamper-gate-review-missing-prompt-id");
+      copyDir(CONTROL, dir);
+      fs.writeFileSync(
+        path.join(dir, "prompt-manifest.json"),
+        JSON.stringify({
+          candidate_id: "synthetic-accepted-control",
+          prompt_set_version: "prompt-set-v01",
+          prompts: [
+            {
+              id: "asset-art-review-v01",
+              version: "v01",
+              path: "prompts/asset-art-review-v01.md",
+              purpose: "Synthetic prompt binding control",
+            },
+          ],
+        }, null, 2) + "\n",
+      );
+      const run = runChecker(dir);
+      assertExit("(k) gate-status: prompt manifest requires review prompt_id", run.code, 2, run);
+    }
+
+    // (l) gate-status: prompt manifest present and review cites a known prompt -> exit 0
+    {
+      const dir = path.join(scratchRoot, "tamper-gate-review-known-prompt-id");
+      copyDir(CONTROL, dir);
+      fs.writeFileSync(
+        path.join(dir, "prompt-manifest.json"),
+        JSON.stringify({
+          candidate_id: "synthetic-accepted-control",
+          prompt_set_version: "prompt-set-v01",
+          prompts: [
+            {
+              id: "asset-art-review-v01",
+              version: "v01",
+              path: "prompts/asset-art-review-v01.md",
+              purpose: "Synthetic prompt binding control",
+            },
+          ],
+        }, null, 2) + "\n",
+      );
+      const reviewFile = path.join(dir, "reviews", "fresh-visual-review.json");
+      const review = JSON.parse(fs.readFileSync(reviewFile, "utf8"));
+      review.prompt_id = "asset-art-review-v01";
+      review.prompt_version = "v01";
+      fs.writeFileSync(reviewFile, JSON.stringify(review, null, 2) + "\n");
+      const run = runChecker(dir);
+      assertExit("(l) gate-status: review cites known prompt_id", run.code, 0, run);
+    }
   } finally {
     fs.rmSync(scratchRoot, { recursive: true, force: true });
   }
@@ -143,7 +273,7 @@ function main() {
     }
     process.exit(1);
   }
-  console.log("All 4 regression assertions passed.");
+  console.log("All 12 regression assertions passed.");
   process.exit(0);
 }
 

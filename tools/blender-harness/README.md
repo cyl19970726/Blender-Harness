@@ -1,148 +1,368 @@
 # Blender Harness
 
-Agent 在 Blender 里的作业环境(issue #131),不是"渲染完跑一下"的 QA 工具。#130
-定义生产宪法(Phase + Gate),#131 定义这套环境本体,本 issue(#133)回答它在仓库
-里住哪、长什么结构。
+Agent 在 Blender 里的作业环境(issue #131),不是"渲染完跑一下"的 QA 工具。它的职责是让 3D 资产从 source 到 runtime 的每个不可逆风险点都有证据、评审和机器阻断。
 
-## 定位:感知 / 行动 / 反馈三层
+这版把原来的反馈层地基扩展成通用 3D asset gate contract:同一套 harness 可以保护进贤门长龙、揭小贤、郭之奇、建筑件、产品道具,而不是只服务某条龙。
 
-| 层 | 是什么 | 交付物 | 本 PR 状态 |
-|---|---|---|---|
-| 感知层(agent 的眼) | 固定多视图 / board / filmstrip / 参考并排 | 内环 quicklook + 外环正式 board | 未落地(PR-3) |
-| 行动层(agent 的手) | 参数化脚本动词;插件 = 动词扩展 | `blender/render_*` / `blender/audit_*` | 未落地(PR-3) |
-| 反馈层(环境的判定) | gate 状态机 + 聚合判定 + 金反例回归 | 双 schema + `check-gate-status.mjs` + regression | **本 PR 交付** |
+## 一句话
 
-反馈层刻意最先构建:没有一个能真正拒绝产物的判定器,感知层拍出再多板子也只是
-装饰。核心设计约束——**观察 ≠ 奖励**:agent 用自己的眼睛(感知层)干活,但通过
-权只在独立评审手里,不在生产者自己手里。
+Blender harness 不负责让作品变好看。它负责让不好看的、来源不清的、拓扑不能动的、UV/材质断裂的、rig 会塌的、动画只会遮丑的、pass 不同源的资产不能继续流到下游。
+
+## 总架构
+
+```mermaid
+flowchart TB
+  subgraph Source["0 Source / Provenance"]
+    REF["Reference / Art Direction"]
+    HY["Hunyuan raw / LowPoly / UV / Texture draft"]
+    MANUAL["Blender / ZBrush / Manual source"]
+    MARKET["Licensed marketplace source"]
+    SRCMAN["source-manifest.json\nlicense + provenance + NoAI status"]
+  end
+
+  subgraph Storage["0.5 Storage Boundary"]
+    GITSTORE["Git\nlight authoritative sources / manifests / boards"]
+    LOCALART[".artifacts\nheavy local working files"]
+    COLDSTORE["CloudBase / COS / GitHub Release\nlarge durable binaries + SHA256"]
+  end
+
+  subgraph Candidate["1 Candidate Contract"]
+    CM["candidate-manifest.json\nasset_id + asset_profile + current_gate"]
+    AM["artifact-manifest.json\nartifact ids + paths + helper_overlay flags"]
+    PM["prompt-manifest.json\nversioned Human / Agent prompts"]
+    PROFILE["profiles/asset-profiles.json\nlong_creature / humanoid / historical / building / product"]
+  end
+
+  subgraph Perception["2 Perception Layer (Blender eyes)"]
+    ART["Asset Art Boards\nmaterial / clay / wire / closeups / no-helper"]
+    TOPO["Topology + UV Boards\nloops / UV / TD / bake"]
+    RIG["Rig + Deformation Boards\nneutral / extreme / closeups"]
+    ANIM["Animation Boards\ncamera / top / side / asset-only / high coverage"]
+    PASS["Source-Pass Boards\nbeauty / owner / matte / audit"]
+  end
+
+  subgraph Review["3 Human / Agent Review Layer"]
+    PROMPT["prompts/*.md\nreview prompts + compare prompts + failure checklist"]
+    RUB["rubrics/*.md\nasset-art / topology-uv / rig / animation / source-pass"]
+    REV["reviews/<role>-review.json\nrequired reviewers can reject"]
+    GATE["gate-status.json\nstatus + downstream_allowed"]
+  end
+
+  subgraph Machine["4 Machine Gates"]
+    ARTCHK["check-artifacts.mjs\nrequired evidence present"]
+    GATECHK["check-gate-status.mjs\nreviews + status consistent"]
+    REG["npm test\nnegative + positive + tamper regression"]
+  end
+
+  subgraph Downstream["5 Locked Downstream"]
+    FULL["full render"]
+    SBS["SBS alpha / source-pass packaging"]
+    GLB["runtime GLB"]
+    WX["WeChat runtime / QR"]
+    CB["CloudBase publish"]
+    DEVICE["device signoff"]
+  end
+
+  REF --> SRCMAN
+  HY --> SRCMAN
+  MANUAL --> SRCMAN
+  MARKET --> SRCMAN
+  SRCMAN --> GITSTORE
+  SRCMAN --> LOCALART
+  SRCMAN --> COLDSTORE
+  GITSTORE --> CM
+  LOCALART --> CM
+  COLDSTORE --> CM
+  CM --> PROFILE
+  CM --> AM
+  CM --> PM
+  PROFILE --> ART
+  PROFILE --> TOPO
+  PROFILE --> RIG
+  PROFILE --> ANIM
+  PROFILE --> PASS
+  ART --> AM
+  TOPO --> AM
+  RIG --> AM
+  ANIM --> AM
+  PASS --> AM
+  AM --> ARTCHK
+  PROMPT --> PM
+  PM --> ARTCHK
+  PROMPT --> REV
+  RUB --> REV
+  REV --> GATE
+  GATE --> GATECHK
+  ARTCHK --> REG
+  GATECHK --> REG
+  GATECHK -. "only if accepted" .-> FULL
+  GATECHK -. "only if accepted" .-> SBS
+  GATECHK -. "only if accepted" .-> GLB
+  GATECHK -. "only if accepted" .-> WX
+  GATECHK -. "only if accepted" .-> CB
+  GATECHK -. "only if accepted" .-> DEVICE
+```
+
+## 三层定位
+
+| 层 | 是什么 | 当前交付 |
+|---|---|---|
+| 感知层(agent 的眼) | Blender 固定多视图、近景、wireframe、UV、deformation、motion boards | 通过 `artifact-manifest.json` 形成机器可检查的交付合同;具体 Blender 渲染动词仍会逐步从 `scripts/blender` 收敛 |
+| 行动层(agent 的手) | 参数化 Blender 动词,比如 render model/rig/animation/source-pass/package | 本 PR 不重写 77 个历史脚本,但定义它们必须交付的标准 artifact ids |
+| 反馈层(环境的判定) | status/review/artifact 聚合判定 + regression | `check-gate-status.mjs`, `check-artifacts.mjs`, schemas, profiles, rubrics, fixtures, templates |
 
 ## 目录结构
 
 ```text
 tools/blender-harness/
-├── README.md                 ← 本文件
-├── package.json              ← npm test = 反馈层回归(零依赖)
-├── schemas/
-│   ├── gate-status.schema.json   ← <candidate-dir>/gate-status.json 的契约
-│   └── review.schema.json        ← <candidate-dir>/reviews/<role>-review.json 的契约
-├── src/
-│   ├── check-gate-status.mjs     ← 聚合判定 CLI(反馈层核心)
-│   └── run-regression.mjs        ← npm test 入口,子进程调用 checker 做回归断言
-├── fixtures/
-│   ├── gate-d-v01-negative/      ← 金反例(真实 Gate D 候选,已被独立评审拒绝)
-│   └── synthetic-accepted-control/ ← 正控(纯合成,证明 checker 的 accepted/exit 0 路径)
-└── blender/                  ← 行动层动词占位,PR-3 落地(见下方动词表)
+  README.md
+  package.json
+  examples/
+    complex-creature-long-dragon.md
+    humanoid-ip-jie-xiaoxian.md
+  profiles/
+    asset-profiles.json
+  prompts/
+    asset-art-review-v01.md
+    topology-uv-review-v01.md
+    rig-deformation-review-v01.md
+    animation-review-v01.md
+    source-pass-review-v01.md
+    reference-compare-review-v01.md
+    failure-case-checklist-v01.md
+  rubrics/
+    asset-art-rubric-v01.md
+    topology-uv-rubric-v01.md
+    rig-deformation-rubric-v01.md
+    animation-rubric-v01.md
+    source-pass-rubric-v01.md
+  schemas/
+    gate-status.schema.json
+    review.schema.json
+    candidate-manifest.schema.json
+    artifact-manifest.schema.json
+    prompt-manifest.schema.json
+    asset-profiles.schema.json
+  src/
+    check-gate-status.mjs
+    check-artifacts.mjs
+    run-regression.mjs
+  fixtures/
+    gate-d-v01-negative/
+    synthetic-accepted-control/
+    asset-contract-long-creature-accepted/
+    asset-art-head-neck-negative/
+    asset-contract-humanoid-accepted/
+  templates/
+    candidate/
+    reviews/
+    source-asset/
+      PROVENANCE.md
+      source-manifest.json
+    issue-comment.md
 ```
 
-## 动词表
+## Asset Storage Boundary
 
-按运行时分层是结构性约束(issue #131):反馈层纯 node、无 Blender 依赖,可以进
-CI 每个 PR 自动跑;行动层要跑 `blender -b`,不进 CI,只在本机/渲染节点执行。
+Blender Harness depends on the project asset layout in `docs/ASSET_LAYOUT.md` and the AR asset manifest in `docs/reference/ar-assets/manifest.json`. A candidate is not allowed to blur source storage, production scratch, durable archive, and runtime delivery.
 
-| 动词 | 路径 | runtime | 状态 |
-|---|---|---|---|
-| 聚合判定 | `src/check-gate-status.mjs` | `node` | 已落地(本 PR) |
-| 回归自检 | `src/run-regression.mjs` | `node` | 已落地(本 PR) |
-| 固定视图库 | `blender/lib/cameras.py` | `python3`(供 `blender -b` 调用) | 占位,PR-3 |
-| IO/manifest 公共件 | `blender/lib/harness_io.py` | `python3` | 占位,PR-3 |
-| board/filmstrip 排版公共件 | `blender/lib/boards.py` | `python3` | 占位,PR-3 |
-| 内环速览 | `blender/quicklook.py` | `blender -b --python` | 占位,PR-3 |
-| 模型多视图 | `blender/render_model_multiview.py` | `blender -b --python` | 占位,PR-3 |
-| 绑骨姿势板 | `blender/render_rig_pose_board.py` | `blender -b --python` | 占位,PR-3 |
-| 动画多视图 | `blender/render_animation_multiview.py` | `blender -b --python` | 占位,PR-3 |
-| Pass 视图层构建 | `blender/build_source_pass_view_layers.py` | `blender -b --python` | 占位,PR-3 |
-| Pass 渲染 | `blender/render_source_passes.py` | `blender -b --python` | 占位,PR-3 |
-| Pass 产出审计 | `blender/audit_pass_outputs.py` | `blender -b --python` 或 `python3` | 占位,PR-3 |
-| SBS/alpha 打包 | `blender/package_sbs_alpha.py` | `python3` | 占位,PR-3 |
+Use this split:
 
-## 用法
+| Storage | Owns | Commit to Git? | Required record |
+|---|---|---:|---|
+| `_assets-src/<asset-id>/` | light authoritative source sheets, briefs, ownership matrices, small reference boards, `PROVENANCE.md` | Yes, if each file is small and legally clear | `PROVENANCE.md`, `source-manifest.json`, manifest entry before downstream use |
+| `docs/research/.../<candidate>/` | lightweight gate evidence: boards, audits, review JSON, issue-ready summaries | Yes | candidate id, gate id, review verdict, links back to `.artifacts` or durable archive |
+| `.artifacts/blender-harness/<candidate-id>/` | full Blender candidate directories, generated boards, local `.blend`, frame sequences, raw working outputs | No | candidate manifests inside the directory; copy only reduced evidence to Git when a gate closes |
+| `.artifacts/hunyuan/<asset-id>/<run-id>/` | Hunyuan raw outputs and postprocess runs | No | Hunyuan run manifest, prompt/input hashes, SHA256 of raw GLB/OBJ |
+| CloudBase Storage / Tencent COS | large binaries needed by runtime or long-lived source archive | No, store URL/hash only | URL, SHA256, size, provenance, runtime target |
+| GitHub Release | milestone source packs or review packs that are too large for Git but should remain tied to repo history | No, store release URL/hash only | release tag, asset URL, SHA256, contents manifest |
+| `wechat-*/miniprogram/**/assets/` | runtime assets small enough for the mini program package | Yes, only after package-size decision | manifest entry, runtimeTarget, package-size evidence |
 
-### CLI:check-gate-status
+Rules:
 
-```bash
-node src/check-gate-status.mjs <candidate-dir>
-node src/check-gate-status.mjs <candidate-dir> --json
+- Git stores authority, not every byte: briefs, neutral turnarounds, source manifests, ownership matrices, small boards, gate review JSON, and provenance.
+- `.artifacts` stores heavy work in progress: raw GLB/OBJ, `.blend`, high sculpt, texture bakes, frames, videos, failed candidates, and full candidate directories.
+- Large files that must survive beyond the local machine go to CloudBase/COS or GitHub Release with SHA256. A local-only path is acceptable only as temporary working state, never as the only durable record.
+- Do not enable Git LFS as a silent default. LFS is a separate repo-level decision for versioning large binaries; without an explicit policy, use `.artifacts` plus external archive and Git manifests.
+- A source asset without `PROVENANCE.md` and a manifest path is not production source, even if the file exists locally.
+- A runtime asset in a mini program package is not a source archive. Keep compressed runtime files separate from source sheets, raw models, and Blender candidates.
+
+## Asset Profiles
+
+`profiles/asset-profiles.json` 是跨资产复用的核心。它定义每类资产每个 gate 必须交什么证据。
+
+| Profile | 用于 | 重点保护 |
+|---|---|---|
+| `long_creature` | 龙、蛇形长身体角色 | 头颈身体连续、鳞片/腹鳞/背鳍流向、尾根、S 曲线/盘绕/扑镜变形 |
+| `humanoid_character` | 揭小贤等 IP/吉祥物 | 脸、比例、服装、配饰、手、表情、retarget 后性格不丢 |
+| `historical_figure` | 郭之奇等历史人物 | 服饰年代、气质/年龄/尊严、袍袖变形、手势文化语气 |
+| `building_prop` | 楼、台基、栏杆、门框 | 结构咬合、硬边/法线、尺度/锚点、pass owner 可分 |
+| `product_prop` | 磁贴、茶具、食物、道具 | 产品边缘、材质完成度、贴近镜头质感、与 marker 尺度一致 |
+
+## Example Assets
+
+Examples are not production acceptance claims. They are reusable stress cases that explain how a profile should be applied to a difficult asset.
+
+| Example | Profile | Why it exists |
+|---|---|---|
+| `examples/complex-creature-long-dragon.md` | `long_creature` | A complex organic creature case for head-neck-body continuity, source-first routing, retopo/UV/rig/animation gates, and near-lens deformation risk |
+| `examples/humanoid-ip-jie-xiaoxian.md` | `humanoid_character` | An unverified IP character example for concept-to-3D generation, face/proportion gates, clothing/accessory binding, and biped/gesture rigging |
+
+## Gate Sequence
+
+```mermaid
+flowchart LR
+  A["Asset Art Gate\n美术成立"] --> B["Topology / UV Gate\n能做成可动皮"]
+  B --> C["Rig / Deformation Gate\n极限姿态不塌"]
+  C --> D["Animation Gate\n多视图 motion 可读"]
+  D --> E["Source-Pass Gate\n同源 owner / alpha"]
+  E --> F["Runtime Gate\nGLB/SBS/WeChat/CloudBase"]
 ```
 
-`<candidate-dir>` 是参数,禁止硬编码具体候选路径(issue #131 横切验收标准 1:
-一切 render/board/audit/check 脚本必须以 candidate-dir 为参数)。目录内必须有
-`gate-status.json`,以及 `reviews[].file` 指向的每个 review 文件(相对候选目录
-或绝对路径)。
+### Gate A: Asset Art
 
-退出码:
+先证明资产值得继续。需要 material/clay/wire/silhouette/no-helper/closeup boards。龙必须额外交 head-neck、belly/dorsal、tail-root、scale-flow closeups。揭小贤必须交 face/outfit/body/accessory closeups。郭之奇必须交 face dignity / historical costume / robe sleeve / cultural tone boards。
 
-- `0` = accepted —— 声明为 accepted-family 状态,且每个 `required_reviews`
-  角色都有一条 `verdict: accept` 的 review。
-- `1` = rejected / blocked —— 任一 required review 缺失、任一 required review
-  `verdict` 为 `reject` 或 `conditional`、状态本身不是 accepted-family、或存在
-  `forbidden_next_outputs` 命中。
-- `2` = 契约违规或输入缺失 —— `gate-status.json`/`review.json` 缺失或不符合
-  schema 形状,或 `status` 与 `downstream_allowed` 内部不一致(见下方聚合规则)。
+硬拒包括:只远景成立、helper 遮丑、头颈身体接缝、generic NPC、建筑悬浮、产品边缘脏。
 
-### npm test
+### Gate B: Topology / UV
+
+证明高模/source 已经变成能动画的 mesh。需要 wireframe、edge loops、UV layout、texel density、bake check。自动 retopo / Hunyuan LowPoly 只能是 draft,不能直接 final。
+
+### Gate C: Rig / Deformation
+
+证明 rig 在真实产品姿态下不塌。龙看 S 曲线、tight coil、绕柱、扑镜、head turn/jaw、tail whip、claw spread。人形看表情、手、袖子、配饰、retarget neutral。
+
+### Gate D: Animation
+
+证明 motion 不是路径平移或镜头遮丑。必须有 camera/top/side/asset-only/high-coverage frames。motion 必须视频或密集帧条直读,静帧不算。
+
+### Gate E: Source-Pass
+
+证明 beauty/pass/matte 同源。SAM2、背景移除、视频生成 object pass 只能 guide,不能 final slot。P40R 式 alpha repair 只能在上游资产和动画已 accepted 后使用。
+
+## Manifests
+
+Every candidate must contain:
+
+```text
+candidate-manifest.json
+artifact-manifest.json
+prompt-manifest.json
+gate-status.json
+source-manifest.json
+reviews/<role>-review.json
+evidence/*
+```
+
+`candidate-manifest.json` declares:
+
+- `candidate_id`
+- `asset_id`
+- `asset_profile`
+- `current_gate`
+- source type and license clearance
+
+`artifact-manifest.json` declares artifact ids and paths. Important fields:
+
+- `helper_overlay: true|false` tells the checker whether a board is clean enough for no-helper gates.
+- `usable: false` blocks the artifact even if the file exists.
+
+`prompt-manifest.json` declares which versioned Human / Agent review prompts are available to this candidate. `check-artifacts` checks that profile-required prompts exist under `tools/blender-harness/prompts/` before the evidence contract can complete. If `prompt-manifest.json` exists, `check-gate-status` also requires each review to cite a known `prompt_id`; this prevents "prompt library exists, but the review was freehand" drift.
+
+`source-manifest.json` declares source type, license/provenance, storage policy, heavy binary archive pointers, Hunyuan runs, and Blender candidates. Use `templates/source-asset/PROVENANCE.md` plus `templates/source-asset/source-manifest.json` when starting a new source package under `_assets-src/<asset-id>/`. The source package should record every heavy local file by URL/path/SHA256, but should not commit those heavy binaries by default.
+
+## Prompt Library
+
+`prompts/*.md` is the versioned input layer for Human / Agent review. Rubrics define scoring and hard-reject policy; prompts define how the reviewer should use boards, references, failure cases, and output JSON.
+
+| Prompt | Used for |
+|---|---|
+| `asset-art-review-v01.md` | Asset art gate review before topology/rig/animation work |
+| `topology-uv-review-v01.md` | Topology, UV, texel density, and bake review |
+| `rig-deformation-review-v01.md` | Rig hierarchy, skin weights, and extreme pose review |
+| `animation-review-v01.md` | Motion, staging, camera, and high-coverage frame review |
+| `source-pass-review-v01.md` | Beauty/pass/matte owner and runtime boundary review |
+| `reference-compare-review-v01.md` | Reference-vs-candidate evidence comparison |
+| `failure-case-checklist-v01.md` | Shared hard-reject checklist before any accept verdict |
+
+This is intentionally separate from `reviews/*.json`. A review is the signed output. A prompt is the reproducible instruction set that produced it.
+
+## Commands
 
 ```bash
 cd tools/blender-harness
 npm test
+npm run check-gate-status -- <candidate-dir> --json
+npm run check-artifacts -- <candidate-dir> --json
 ```
 
-零依赖,`node src/run-regression.mjs` 把 checker 当真实子进程调用,针对
-`fixtures/` 跑 4 条回归断言(见下方"fixtures 说明")。CI 用同一条命令(见下方
-"CI")。
+Exit codes:
 
-## 聚合规则(issue #131 hardening,checker 硬编码,不做成可配置项)
+| Code | Meaning |
+|---|---|
+| 0 | Accepted/complete for the checker being run |
+| 1 | Rejected/blocked: evidence or reviews did not pass |
+| 2 | Contract violation: malformed/missing inputs or inconsistent status |
 
-1. 任一 `required_reviews` 角色在 `reviews[]` 中缺失 ⇒ 聚合结果 rejected
-   (exit 1)。
-2. 任一 required review 的 `verdict` 为 `reject` ⇒ rejected(exit 1);
-   `verdict: conditional` **不解锁下游**,同样 rejected(exit 1),但诊断消息与
-   `reject` 区分,便于定位是"硬拒"还是"有条件但未过关"。
-3. `status` 不属于 accepted 族(`accepted` / `production_accepted`)时,
-   `downstream_allowed` 必须为 `false`;`status` 属于 accepted 族时,
-   `downstream_allowed` 必须为 `true`。两个方向的不一致都是**契约违规**
-   (exit 2),而不是普通 reject——状态机本身撒谎,比某次评审没过关更严重。
-4. `runtime_smoke_passed` **永不**等价于或自动升级为 `production_accepted`。
-   `runtime_smoke_passed` 只证明微信小程序 runtime 路径能加载候选产物,不是
-   生产验收。若 `status: runtime_smoke_passed` 却 `downstream_allowed: true`,
-   同样按规则 3 判为契约违规。
-5. `forbidden_next_outputs` 中任一路径/glob 在候选目录内实际存在,且候选未处
-   于 accepted 状态 ⇒ rejected(exit 1)。这是下游绕过检测:防止"评审没过,但
-   下游产物已经手工塞进候选目录"这种物理绕过。
-6. 退出码总表:`0` = accepted,`1` = rejected/blocked,`2` = 契约违规或输入
-   缺失。**metrics 只有拒绝权**:checker 输出 `accepted`(exit 0)仅代表
-   "评审记录齐全、结构合法、且全部 accept",**不代表视觉背书**。视觉背书只存
-   在于被引用的 `reviews/*.json` 内部——checker 能阻断晋级,但不能替独立评审
-   签发"好看"。
+`check-artifacts` does not judge beauty. It only proves required evidence exists and clean/no-helper constraints are honored. `check-gate-status` does not judge beauty either. It proves required review records exist, required reviewers accepted, downstream status is consistent, and prompt-bound candidates have reviews that cite a declared prompt. Visual authority lives in `reviews/*.json`.
 
-## fixtures 说明
+## Regression Fixtures
 
-- `fixtures/gate-d-v01-negative/`:**金反例**。真实 Gate D 121 帧候选
-  (`gate-d-reduced-animation-candidate-v01`),独立视觉评审已判 REJECT(高覆盖
-  帧读成低模代理球/管,而非叙事驱动的龙形遮挡)。裁剪自
-  `legacy/`(manifest/audit/review + 关键 boards,~1MB),461MB 全量素材归档位置
-  与 SHA-256 记在该目录 `README.md`。此 fixture 必须**永远**判 rejected;若
-  未来某个 checker 实现让它变成 accepted 或 `downstream_allowed: true`,那是
-  checker 的 bug,不是 fixture 的 bug。
-- `fixtures/synthetic-accepted-control/`:**正控**,纯合成 JSON,不带任何媒体
-  文件、不代表任何真实视觉评审结果。唯一作用是证明 checker 的
-  accepted/exit 0 路径本身可达——不能拿它当"某个 Gate 真的过了"的证据。
+`npm test` currently asserts 12 paths:
 
-`npm test` 在这两个 fixture 之外,还在 `os.tmpdir()` 的临时目录里对 fixture
-做篡改拷贝(从不修改被 git 跟踪的 fixture 本身),验证:(c) 删掉一个 required
-review ⇒ exit 1;(d) 让 `downstream_allowed` 在 rejected 状态下翻转为 `true`
-⇒ exit 2。四条断言合起来覆盖聚合规则 1/2/3/6。
+1. Gate-D golden negative remains rejected.
+2. Synthetic accepted gate-status control accepts.
+3. Missing required review rejects.
+4. Rejected status with `downstream_allowed=true` is contract violation.
+5. Long-creature asset-art contract accepted fixture completes.
+6. Head-neck helper-overlay negative fixture blocks.
+7. Humanoid asset-art contract accepted fixture completes.
+8. Artifact manifest candidate mismatch is contract violation.
+9. Missing required prompt blocks artifact completion.
+10. Prompt path escaping `tools/blender-harness` is a contract violation.
+11. `prompt-manifest.json` present but review missing `prompt_id` is a contract violation.
+12. `prompt-manifest.json` present and review citing a known `prompt_id` remains accepted.
 
-## 后续 PR 路线(issue #133)
+The `asset-art-head-neck-negative` fixture exists specifically because the dragon line leaked a visible head-neck-body seam downstream. Future checker changes must not let that failure mode pass as complete evidence.
 
-本 PR(PR-1)只交付地基:包骨架 + schemas + checker + 金反例/正控 fixtures +
-CI 接线,对应反馈层。
+## Review Roles
 
-- **PR-2 章程与契约**:`docs/pipeline/` 生产章程(泛化版
-  GOAL_PRINCIPLES_ACCEPTANCE)、`docs/research/ar-magnet/reference-grammar/`
-  参考锚导入、`rubrics/rubric-v01.md` + `rubrics/failure-modes.md`、
-  hunyuan-3d skill 落 main。
-- **PR-3 起动词**:`blender/lib/`(`cameras.py` / `harness_io.py` /
-  `boards.py`)+ `blender/quicklook.py` + `blender/render_model_multiview.py`,
-  其余动词按 #131 动工顺序逐个 PR 补齐,对应感知层与行动层。
+Human reviewers or agent reviewers should be assigned by gate. In this side conversation no subagents were run; this package only defines their contracts.
 
-详见 #133(包结构与落地路径)与 #131(harness 本体设计)。
+| Gate | Required review roles from profile/common gate |
+|---|---|
+| Asset Art | `asset_art_reviewer`, `fresh_visual_reviewer` |
+| Topology / UV | `topology_reviewer`, `uv_material_reviewer` |
+| Rig / Deformation | `rig_reviewer`, `deformation_reviewer`, `fresh_visual_reviewer` |
+| Animation | `animation_reviewer`, `fresh_visual_reviewer` |
+| Source-Pass | `source_pass_reviewer`, `runtime_boundary_reviewer`, `fresh_visual_reviewer` |
+
+Reviewer rule: if a board exposes a hard reject, reject. Do not write "accepted but polish later" for a core seam, topology, deformation, or cultural-tone failure.
+
+## How This Applies To Current Assets
+
+### Complex Creature Example: Long Dragon
+
+Use `asset_profile=long_creature`. The long dragon is the harness's complex biological asset example and regression canary, not an accepted production asset in this PR. The first new valid dragon candidate must pass `asset_art` before any retopo/rig/animation/pass work. Required dragon-specific boards include head-neck closeup, belly/dorsal closeup, tail-root closeup, and scale-flow callout. The previous P10E-style failure is now represented by `fixtures/asset-art-head-neck-negative`.
+
+### Jie Xiaoxian
+
+Use `asset_profile=humanoid_character`. Hunyuan mesh/rig output can be source evidence, but asset-art must show face, outfit, body proportion, and accessories. Auto-rig or text-to-motion does not bypass the rig/deformation gate. The unverified example route is documented in `examples/humanoid-ip-jie-xiaoxian.md`.
+
+### Guo Zhiqi
+
+Use `asset_profile=historical_figure`. The asset-art gate must protect historical costume, dignity, face/age, and robe/sleeve material before rigging. Gesture animation must pass cultural-tone review, not only mechanical motion review.
+
+### Building / Product Props
+
+Use `building_prop` or `product_prop`. These profiles protect hard-edge normals, structure joins, pivots, marker scale, product finish, and pass-owner separability.
+
+## Non-Goals Of This PR
+
+- It does not replace all existing `scripts/blender/jxm_dragon_*.py` scripts.
+- It does not implement Blender rendering commands yet.
+- It does not claim any visual asset is accepted.
+- It does not run subagent review.
+
+It does create the contract those scripts and reviewers must satisfy before downstream gates can unlock.

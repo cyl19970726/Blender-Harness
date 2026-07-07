@@ -1,0 +1,12 @@
+{
+  "candidate_id": "asset-contract-humanoid-accepted",
+  "asset_id": "jie-xiaoxian-v1",
+  "asset_profile": "humanoid_character",
+  "current_gate": "asset_art",
+  "source": {
+    "source_type": "original",
+    "license_clearance": "cleared",
+    "source_manifest_path": "source-manifest.json"
+  },
+  "notes": "Synthetic accepted control for humanoid character asset-art evidence."
+}

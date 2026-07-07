@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "jygc.blender-harness.prompt-manifest.v1",
+  "title": "Blender Harness Prompt Manifest",
+  "description": "Declares the versioned Human / Agent review prompts available to a candidate gate. The files live under tools/blender-harness/prompts and are consumed by check-artifacts.mjs.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["candidate_id", "prompt_set_version", "prompts"],
+  "properties": {
+    "candidate_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt_set_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["id", "version", "path", "purpose"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Path relative to tools/blender-harness, for example prompts/asset-art-review-v01.md."
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          },
+          "used_by_roles": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}
