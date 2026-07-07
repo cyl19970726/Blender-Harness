@@ -69,12 +69,18 @@
       "paths": [
         "_assets-src/jiexiaoxian-v2/PROVENANCE.md",
         "_assets-src/jiexiaoxian-v2/manifests/source-manifest.json",
+        "_assets-src/jiexiaoxian-v2/manifests/p0-p2-gate-status.json",
+        "_assets-src/jiexiaoxian-v2/manifests/accessory-ownership-matrix.json",
+        "_assets-src/jiexiaoxian-v2/asset-brief.md",
+        "_assets-src/jiexiaoxian-v2/identity-capsule.md",
+        "_assets-src/jiexiaoxian-v2/00_style_lock/style-lock-v01.md",
+        "_assets-src/jiexiaoxian-v2/01_3d_ready_turnaround/production-sheet-spec-v01.md",
         "_assets-src/jiexiaoxian-v2/01_3d_ready_turnaround/jiexiaoxian-v2-turnaround-reference-v01.png"
       ],
       "status": "active-candidate",
       "runtimeTarget": "blender-harness-source-only",
-      "reason": "User-provided Jie Xiaoxian v2 multiview reference copied into the source package for issue #153. It is a style/proportion/turnaround reference, not a final 3D-ready neutral sheet.",
-      "nextAction": "Produce high-resolution orthographic neutral turnaround, accessory split, material references, and accessory ownership matrix before Hunyuan generation."
+      "reason": "Jie Xiaoxian v2 P0/P1 locks and P2 source-design contract for issue #153. The copied multiview image is style/proportion reference only, not a final 3D-ready neutral sheet.",
+      "nextAction": "Produce high-resolution orthographic neutral turnaround and accessory split closeups, then run P2 visual review before Hunyuan generation."
     },
     {
       "id": "stampbook-miniprogram-assets",
