@@ -12,7 +12,7 @@ related:
 
 `manifest.json` 是当前 AR 资产处置状态的索引。它不替代素材源文件,也不代表文件已经完成小程序迁移。
 
-冰箱贴逐项盘点见 [`fridge-magnets.md`](fridge-magnets.md)。执行计划见 [`../../migration/plans/2026-06-25-ar-xr-skill-asset-reorg.md`](../../migration/plans/2026-06-25-ar-xr-skill-asset-reorg.md)。
+冰箱贴逐项盘点见 [`fridge-magnets.md`](fridge-magnets.md)。12 景点 AR 触发图(日/夜双版)覆盖与缺口台账见 [`spot-trigger-images.md`](spot-trigger-images.md)。执行计划见 [`../../migration/plans/2026-06-25-ar-xr-skill-asset-reorg.md`](../../migration/plans/2026-06-25-ar-xr-skill-asset-reorg.md)。
 
 状态含义:
 
