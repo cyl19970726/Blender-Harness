@@ -51,7 +51,7 @@ related:
 - 每景同机位加拍 1-2 张**细节特写作小触发图**（石狮头→摸狮交互、匾额特写等）。
 - **三类图严格分开**（docs/ASSET_LAYOUT.md §3 铁律）：参考图（外部对标，不进产品）/ 触发图（实拍锚点，AR 识别用，落 `_assets-src/triggers/<spot>/` + PROVENANCE）/ 动画美术图（overlay 渲染产物）三者物理目录不得混放。触发图源片 PROVENANCE 必写拍摄日期/时段/机位/EXIF——缺一项配准白模就对不齐。
 
-现状：八景只有进贤门 1 张临时触发图（`wechat-jinxianmen/.../marker.jpg`，1024×768，带三硬伤，夜拍替换已排期），其余 7 缺（#135 §2）。触发图统一补拍是 L2 的第一物理前提。
+现状：八景暂无可用触发图。进贤门那张临时触发图（曾在 `wechat-jinxianmen/.../marker.jpg`，1024×768，带三硬伤）已随脚手架于 2026-07-08 删除（历史在 tag `h5-final`，见 `docs/migration/2026-07-08-scaffold-asset-cleanup.md`）；新触发图落 `wechat-gucheng` 时按 `docs/ASSET_LAYOUT.md` 归位（`markers/<spot>-marker.jpg`），源片进 `_assets-src/triggers/<spot>/`+PROVENANCE。八景触发图统一补拍是 L2 的第一物理前提（#135 §2）。
 
 ## 4. 创意方法（内容卡驱动 · history_anchor or die）
 

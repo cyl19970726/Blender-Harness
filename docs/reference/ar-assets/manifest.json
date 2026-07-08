@@ -1,6 +1,6 @@
 {
   "schema": "jygc.ar-assets.v1",
-  "updated": "2026-07-07",
+  "updated": "2026-07-08",
   "policy": {
     "canonicalDecision": "docs/migration/decisions/0006-mini-program-ar-mainline.md",
     "productMainline": "wechat-miniprogram-xr",
@@ -8,47 +8,9 @@
     "deprecatedRuntime": [
       "h5-mindar-aframe"
     ],
-    "note": "2026-07-03 H5 AR retirement (docs/migration/2026-07-03-h5-retirement.md): all deprecated/rejected/archive-candidate/evidence-only H5-AR .mind + magnet + nanpu items were physically deleted with the H5 AR route, so their manifest records are removed. The Jinxianmen Guo Zhiqi active-candidate assets were migrated from public/ar/spots/jinxianmen/libai/ into the mini-program package (wechat-jinxianmen/miniprogram/assets/ar/libai/) and their paths[] updated below. Historical audit trace of the delisted items lives in the retirement note."
+    "note": "2026-07-03 H5 AR retirement (docs/migration/2026-07-03-h5-retirement.md): all deprecated/rejected/archive-candidate/evidence-only H5-AR .mind + magnet + nanpu items were physically deleted with the H5 AR route, so their manifest records are removed. 2026-07-08 scaffold cleanup (docs/migration/2026-07-08-scaffold-asset-cleanup.md): the wechat-jinxianmen/ and wechat-ar/ experimental AR scaffolds were deleted per ADR 0006 (mini-program XR is the sole runtime) and user decision, so the three Jinxianmen Guo Zhiqi records (guozhiqi model / marker / concepts) that pointed into wechat-jinxianmen/miniprogram/assets/ar/libai/ are removed from this manifest — matching how physically-deleted assets are delisted (the schema has no 'retired' status and check-ar-assets.mjs requires every listed path to resolve on disk). Recovery entry point for the deleted scaffold and its assets is tag h5-final; the Jinxianmen Guo Zhiqi AR direction will be rebuilt inside the wechat-gucheng main program and re-registered here with fresh paths[] when it lands. Historical audit trace of all delisted items lives in the retirement and cleanup notes."
   },
   "items": [
-    {
-      "id": "jinxianmen-guozhiqi-model-v1",
-      "category": "scenic-spot-ar",
-      "paths": [
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/guozhiqi-toon-anim.glb"
-      ],
-      "status": "active-candidate",
-      "runtimeTarget": "wechat-miniprogram-xr-frame",
-      "reason": "Primary candidate for the Jinxianmen Guo Zhiqi character-presence AR direction. Migrated into the mini-program package during the 2026-07-03 H5 AR retirement.",
-      "nextAction": "Import into a WeChat XR-Frame page, set scale/lighting/animation defaults, and record true-device evidence."
-    },
-    {
-      "id": "jinxianmen-guozhiqi-marker-v1",
-      "category": "recognition-target",
-      "paths": [
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/marker.jpg"
-      ],
-      "status": "active-candidate",
-      "runtimeTarget": "wechat-miniprogram-visionkit-or-xr-image-tracking",
-      "reason": "Candidate V1 trigger target for Jinxianmen Guo Zhiqi AR. Migrated into the mini-program package during the 2026-07-03 H5 AR retirement.",
-      "nextAction": "Measure true-device recognition quality, viewing distance, lighting tolerance, and fallback UX."
-    },
-    {
-      "id": "jinxianmen-guozhiqi-concepts",
-      "category": "art-direction",
-      "paths": [
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/guozhiqi-concept-1.png",
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/guozhiqi-concept-2.png",
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/guozhiqi-concept-3.png",
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/toon-1.png",
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/toon-2.png",
-        "wechat-jinxianmen/miniprogram/assets/ar/libai/toon-3.png"
-      ],
-      "status": "active-candidate",
-      "runtimeTarget": "art-review",
-      "reason": "Style references for the Jinxianmen character route. Migrated into the mini-program package during the 2026-07-03 H5 AR retirement.",
-      "nextAction": "Select one visual direction before model polish and UI copy lock."
-    },
     {
       "id": "jiexiaoxian-miniprogram-mascots",
       "category": "miniprogram-ui-assets",
