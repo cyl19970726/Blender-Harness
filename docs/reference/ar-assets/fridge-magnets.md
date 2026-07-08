@@ -4,7 +4,7 @@ carrier: repo-docs
 owner: longling
 last-reviewed: 2026-06-25
 related:
-  - docs/migration/decisions/0006-mini-program-ar-mainline.md
+  - docs/decisions/0006-mini-program-ar-mainline.md
   - docs/reference/ar-assets/manifest.json
 ---
 

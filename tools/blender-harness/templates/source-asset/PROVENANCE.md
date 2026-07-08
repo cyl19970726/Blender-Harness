@@ -68,7 +68,7 @@ provenance.
 
 | Gate | Candidate dir | Reduced evidence dir | Verdict | Review files |
 |---|---|---|---|---|
-| asset_art | `.artifacts/blender-harness/<candidate-id>/` | `docs/research/<domain>/<asset-id>/<candidate-id>/` | pending | |
+| asset_art | `.artifacts/blender-harness/<candidate-id>/` | (pending per ADR 0007 open item) | pending | |
 | topology_uv | | | pending | |
 | rig_deformation | | | pending | |
 | animation | | | pending | |

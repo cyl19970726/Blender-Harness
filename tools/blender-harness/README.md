@@ -164,14 +164,14 @@ tools/blender-harness/
 
 ## Asset Storage Boundary
 
-Blender Harness depends on the project asset layout in `docs/ASSET_LAYOUT.md` and the AR asset manifest in `docs/reference/ar-assets/manifest.json`. A candidate is not allowed to blur source storage, production scratch, durable archive, and runtime delivery.
+Blender Harness depends on the project asset layout in `docs/architecture/ASSET_LAYOUT.md` and the AR asset manifest in `docs/reference/ar-assets/manifest.json`. A candidate is not allowed to blur source storage, production scratch, durable archive, and runtime delivery.
 
 Use this split:
 
 | Storage | Owns | Commit to Git? | Required record |
 |---|---|---:|---|
 | `_assets-src/<asset-id>/` | light authoritative source sheets, briefs, ownership matrices, small reference boards, `PROVENANCE.md` | Yes, if each file is small and legally clear | `PROVENANCE.md`, `source-manifest.json`, manifest entry before downstream use |
-| `docs/research/.../<candidate>/` | lightweight gate evidence: boards, audits, review JSON, issue-ready summaries | Yes | candidate id, gate id, review verdict, links back to `.artifacts` or durable archive |
+| (in-repo location pending, see ADR 0007 open item; docs/research was deleted in docs architecture v2) | lightweight gate evidence: boards, audits, review JSON, issue-ready summaries | Not until re-decided — keep in `.artifacts`/durable archive, link from the issue | candidate id, gate id, review verdict, links back to `.artifacts` or durable archive |
 | `.artifacts/blender-harness/<candidate-id>/` | full Blender candidate directories, generated boards, local `.blend`, frame sequences, raw working outputs | No | candidate manifests inside the directory; copy only reduced evidence to Git when a gate closes |
 | `.artifacts/hunyuan/<asset-id>/<run-id>/` | Hunyuan raw outputs and postprocess runs | No | Hunyuan run manifest, prompt/input hashes, SHA256 of raw GLB/OBJ |
 | CloudBase Storage / Tencent COS | large binaries needed by runtime or long-lived source archive | No, store URL/hash only | URL, SHA256, size, provenance, runtime target |

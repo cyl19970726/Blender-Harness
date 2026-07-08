@@ -1,8 +1,10 @@
 # Candidate Template
 
 Copy this directory shape into a real candidate directory under `.artifacts` for
-full artifacts, and archive lightweight evidence under `docs/research/...` when
-a gate closes.
+full artifacts. The in-repo landing spot for lightweight gate evidence is pending
+(docs/research was deleted in docs architecture v2, ADR 0007 open item); until
+re-decided, keep reduced evidence in `.artifacts`/durable archive and link it
+from the issue when a gate closes.
 
 This template is for production working state. Do not copy a filled candidate
 directory into Git. Git should receive only the reduced gate evidence, manifests,
@@ -48,7 +50,7 @@ node tools/blender-harness/src/check-gate-status.mjs <candidate-dir> --json
 When a gate closes, copy only reduced evidence to Git, for example:
 
 ```text
-docs/research/<domain>/<asset-id>/<candidate-id>/
+<evidence-location-per-ADR-0007-follow-up>/<domain>/<asset-id>/<candidate-id>/
   board.png
   audit.json
   reviews/<role>-review.json

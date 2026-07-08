@@ -186,10 +186,10 @@ upstream when the work drifts away from the product.
 
 ## Directory Contract
 
-Use this layout for the full-dragon source route:
+The full-dragon source route is paused; its research directory was deleted with docs architecture v2 (recover via git history @03940cf8). Historical layout for reference:
 
 ```text
-docs/research/ar-magnet/jinxianmen/full-dragon-route-v01/
+docs/research/ar-magnet/jinxianmen/full-dragon-route-v01/   (deleted @03940cf8)
   README.md
   p0-p1-route-brief.md
   reusable-asset-register.md

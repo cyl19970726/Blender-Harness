@@ -4,8 +4,8 @@ carrier: repo-docs
 owner: longling
 last-reviewed: 2026-06-25
 related:
-  - docs/migration/decisions/0006-mini-program-ar-mainline.md
-  - docs/audit/ar-knowledge-inventory-2026-06-25.md
+  - docs/decisions/0006-mini-program-ar-mainline.md
+  - "docs/audit/ar-knowledge-inventory-2026-06-25.md (git @03940cf8)"
 ---
 
 # AR Asset Manifest

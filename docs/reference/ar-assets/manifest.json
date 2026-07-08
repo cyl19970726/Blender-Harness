@@ -2,13 +2,13 @@
   "schema": "jygc.ar-assets.v1",
   "updated": "2026-07-08",
   "policy": {
-    "canonicalDecision": "docs/migration/decisions/0006-mini-program-ar-mainline.md",
+    "canonicalDecision": "docs/decisions/0006-mini-program-ar-mainline.md",
     "productMainline": "wechat-miniprogram-xr",
     "globalSkillPolicy": "Do not edit global skills or create global symlinks for this project phase.",
     "deprecatedRuntime": [
       "h5-mindar-aframe"
     ],
-    "note": "2026-07-03 H5 AR retirement (docs/migration/2026-07-03-h5-retirement.md): all deprecated/rejected/archive-candidate/evidence-only H5-AR .mind + magnet + nanpu items were physically deleted with the H5 AR route, so their manifest records are removed. 2026-07-08 scaffold cleanup (docs/migration/2026-07-08-scaffold-asset-cleanup.md): the wechat-jinxianmen/ and wechat-ar/ experimental AR scaffolds were deleted per ADR 0006 (mini-program XR is the sole runtime) and user decision, so the three Jinxianmen Guo Zhiqi records (guozhiqi model / marker / concepts) that pointed into wechat-jinxianmen/miniprogram/assets/ar/libai/ are removed from this manifest — matching how physically-deleted assets are delisted (the schema has no 'retired' status and check-ar-assets.mjs requires every listed path to resolve on disk). Recovery entry point for the deleted scaffold and its assets is tag h5-final; the Jinxianmen Guo Zhiqi AR direction will be rebuilt inside the wechat-gucheng main program and re-registered here with fresh paths[] when it lands. Historical audit trace of all delisted items lives in the retirement and cleanup notes."
+    "note": "2026-07-03 H5 AR retirement (docs/migration/2026-07-03-h5-retirement.md): all deprecated/rejected/archive-candidate/evidence-only H5-AR .mind + magnet + nanpu items were physically deleted with the H5 AR route, so their manifest records are removed. 2026-07-08 scaffold cleanup (docs/migration/2026-07-08-scaffold-asset-cleanup.md): the wechat-jinxianmen/ and wechat-ar/ experimental AR scaffolds were deleted per ADR 0006 (mini-program XR is the sole runtime) and user decision, so the three Jinxianmen Guo Zhiqi records (guozhiqi model / marker / concepts) that pointed into wechat-jinxianmen/miniprogram/assets/ar/libai/ are removed from this manifest — matching how physically-deleted assets are delisted (the schema has no 'retired' status and check-ar-assets.mjs requires every listed path to resolve on disk). Recovery entry point for the deleted scaffold and its assets is tag h5-final; the Jinxianmen Guo Zhiqi AR direction will be rebuilt inside the wechat-gucheng main program and re-registered here with fresh paths[] when it lands. Historical audit trace of all delisted items lived in the retirement and cleanup notes, which were themselves removed by docs architecture v2 (ADR 0007); recover any of them via git history @03940cf8."
   },
   "items": [
     {
