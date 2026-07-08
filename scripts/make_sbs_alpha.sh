@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 把带 alpha 的素材打成 SBS(左RGB|右alpha)H.264 .mp4 —— 给 sbs-alpha-video 组件用。
-# 为什么 SBS 而非 VP9/HEVC-alpha:WebKit 上传 WebGL 纹理时丢 alpha,SBS 把 alpha 编进右半幅当 luma 绕开(见 docs/research/ar-magnet/透明视频贴卡-spike报告.md)。
+# 为什么 SBS 而非 VP9/HEVC-alpha:WebKit 上传 WebGL 纹理时丢 alpha,SBS 把 alpha 编进右半幅当 luma 绕开(spike 报告已删,git 历史 @03940cf8 见 docs/research/ar-magnet/透明视频贴卡-spike报告.md)。
 # 用法:
 #   bash scripts/make_sbs_alpha.sh frames/%03d.png out.mp4 [size] [fps]   # RGBA 序列帧
 #   bash scripts/make_sbs_alpha.sh src.mov out.mp4 [size] [fps]          # 带 alpha 的 ProRes4444/.mov
