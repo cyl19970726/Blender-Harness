@@ -1,0 +1,4 @@
+interface:
+  display_name: "JYGC AR Lapian"
+  short_description: "AR reference breakdowns, frame analysis, and lapian cards"
+  default_prompt: "Use $jygc-ar-lapian to break down AR references, analyze frames, and store lapian cards for Jieyang Gucheng mini program XR decisions."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "JYGC AR Assets"
+  short_description: "Organize, package, and publish Jieyang Gucheng AR assets"
+  default_prompt: "Use $jygc-ar-assets to organize, classify, move, package, or publish Jieyang Gucheng AR assets across the repo, mini program package, CDN, or CloudBase Storage."

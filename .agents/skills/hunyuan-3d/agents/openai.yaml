@@ -1,0 +1,4 @@
+interface:
+  display_name: "Hunyuan 3D"
+  short_description: "Tencent Hunyuan image/text-to-3D, auto-rigging, and text-to-motion pipeline"
+  default_prompt: "Use $hunyuan-3d to run Tencent Hunyuan image/text-to-3D, auto-rigging, and text-to-motion for AR character assets (API signing, credits, face-count control)."

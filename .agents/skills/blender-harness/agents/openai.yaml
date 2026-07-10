@@ -1,0 +1,4 @@
+interface:
+  display_name: "JYGC Blender Harness"
+  short_description: "Blender production harness: gates, multi-view boards, candidate acceptance"
+  default_prompt: "Use $blender-harness to run the Jieyang Gucheng Blender production harness (gate-status checks, multi-view boards, golden-negative regression, candidate acceptance contracts) for magnet/stamp card and scenic effect-plate work."
