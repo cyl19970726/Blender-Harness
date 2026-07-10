@@ -1,0 +1,4 @@
+interface:
+  display_name: "JYGC Dragon Rig Pipeline"
+  short_description: "Oriental long-body dragon asset pipeline: design, Hunyuan, Blender rig"
+  default_prompt: "Use $jygc-dragon-rig-pipeline to produce Jieyang Gucheng oriental long-body dragon AR assets (reference and original design, Hunyuan source/candidate, Blender spline-IK rig) and decide if an asset can enter rig/animation."
