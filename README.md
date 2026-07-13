@@ -92,4 +92,4 @@ python3 -m unittest tests.test_quicklook_blender.BlenderQuicklookTest -v
 git diff --check
 ```
 
-CI runner 固定为 Ubuntu 24.04，Blender 来自该系统的软件包并在日志中输出版本；具体 Blender package 版本尚未 pin。任何“支持某版本”的结论都应来自保存了 Blender 版本、日志和产物哈希的真实 run，而不是 README 宣称。
+CI runner 固定为 Ubuntu 24.04，Blender 与 glTF 所需的 `python3-numpy` 来自该系统的软件包；CI 会在日志中输出 Blender/Numpy 版本。具体 Blender package 版本尚未 pin。任何“支持某版本”的结论都应来自保存了 Blender 版本、日志和产物哈希的真实 run，而不是 README 宣称。
