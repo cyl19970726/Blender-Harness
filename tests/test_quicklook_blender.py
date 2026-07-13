@@ -152,14 +152,34 @@ class BlenderQuicklookTest(unittest.TestCase):
             builder = root / "build_fixture.py"
             builder.write_text(textwrap.dedent("""
                 import bpy
-                bpy.ops.wm.read_factory_settings(use_empty=True)
+                # --factory-startup gives us a deterministic scene, while
+                # --addons keeps the glTF exporter registered. Resetting
+                # factory settings here would disable it on older Blender.
+                bpy.ops.object.select_all(action='SELECT')
+                bpy.ops.object.delete(use_global=False)
                 bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
                 bpy.context.object.name = "BODY"
                 bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=.35, depth=1.4, location=(1.2, 0, .4))
                 bpy.context.object.name = "DIRECTION_MARKER"
                 bpy.ops.export_scene.gltf(filepath=r'%s', export_format='GLB')
             """ % str(source).replace("\\", "\\\\")), encoding="utf-8")
-            subprocess.run([blender, "-b", "--factory-startup", "--python", str(builder)], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(
+                [
+                    blender,
+                    "-b",
+                    "--factory-startup",
+                    "--addons",
+                    "io_scene_gltf2",
+                    "--python-exit-code",
+                    "1",
+                    "--python",
+                    str(builder),
+                ],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.assertTrue(source.is_file(), "Blender fixture export did not create a GLB")
             output = root / "runs"
             runner = QuicklookRunner(blender)
             with self.assertRaises(ContractError):

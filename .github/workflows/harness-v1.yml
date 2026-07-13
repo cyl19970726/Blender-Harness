@@ -29,4 +29,5 @@ jobs:
           python-version: "3.11"
       - run: sudo apt-get update && sudo apt-get install -y blender
       - run: python -m pip install -e .
+      - run: bh doctor --blender /usr/bin/blender
       - run: RUN_BLENDER_TESTS=1 BLENDER_BIN=/usr/bin/blender python -m unittest tests.test_quicklook_blender.BlenderQuicklookTest -v

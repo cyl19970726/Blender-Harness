@@ -7,7 +7,7 @@ description: Use for organizing, classifying, moving, packaging, or publishing J
 
 ## Source of truth
 
-Read `docs/architecture/ASSET_LAYOUT.md` and `docs/reference/ar-assets/manifest.json` before changing AR asset paths. The layout document governs physical location; the manifest governs status/classification.
+Read `docs/architecture/ASSET_LAYOUT.md` before changing AR asset paths. This standalone Harness repository does not contain the product repo's `_assets-src` or `wechat-*` trees. `docs/reference/ar-assets/manifest.json` is a dated cross-repo snapshot, not proof that those paths exist here. Perform physical moves only in the product workspace after resolving its current manifest and runtime references.
 
 ## Status model
 
@@ -21,7 +21,7 @@ Read `docs/architecture/ASSET_LAYOUT.md` and `docs/reference/ar-assets/manifest.
 ## Rules
 
 - Do not create global symlinks for project assets in this phase.
-- Do not move or delete large AR files without a manifest update in the same change.
+- In the product repository, update its live manifest in the same change that moves or reclassifies an AR asset. Do not rewrite this historical snapshot as if it were live state.
 - Do not import H5/MindAR-only assets into the mini program as product runtime assets.
 - Keep package-size impact visible when moving assets into `wechat-gucheng/miniprogram/assets`.
 - Prefer CDN or CloudBase Storage for large models, video, or audio once the runtime loader is defined.
@@ -30,8 +30,9 @@ Read `docs/architecture/ASSET_LAYOUT.md` and `docs/reference/ar-assets/manifest.
 
 ## Reorg sequence
 
-1. Mark the asset group and status in manifest.
-2. Decide runtime location: mini program package, CloudBase Storage, CDN, or archive.
-3. Update code paths and preload/fallback behavior.
-4. Run package-size and true-device checks.
-5. Attach the immutable evidence/manifest reference to the relevant project record.
+1. Enter the real product workspace and resolve its current live manifest.
+2. Mark the asset group and status in that manifest.
+3. Decide runtime location: mini program package, CloudBase Storage, CDN, or archive.
+4. Update code paths and preload/fallback behavior.
+5. Run package-size and true-device checks.
+6. Attach the immutable evidence/manifest reference to the relevant project record.

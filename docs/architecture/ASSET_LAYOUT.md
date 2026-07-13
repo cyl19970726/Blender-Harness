@@ -12,7 +12,9 @@ related:
 
 # 资产目录边界
 
-本文只回答“资产放哪里”；状态和发布语义以 `docs/reference/ar-assets/manifest.json` 及同目录 README 为准，Blender 作业语义以 `HARNESS_V1.md` 为准。它不再引用旧 `tools/blender-harness`、历史 PR/worktree 或固定 gate。
+本文只回答“资产放哪里”；Blender 作业语义以 `HARNESS_V1.md` 为准。`_assets-src`、`wechat-*` 和 CloudBase/CDN 路径属于揭阳古城产品工作区，本独立 Harness 仓不要求它们存在。`docs/reference/ar-assets/manifest.json` 是迁移时保留的跨仓历史快照，不能代替产品仓的当前 manifest 或文件检查。
+
+涉及物理移动、打包或发布时，Agent 必须先进入真实产品工作区并解析其当前 runtime 引用；不要在本仓创建空目录来伪装资产已经迁移。本文不再引用旧 `tools/blender-harness`、历史 worktree 或固定 gate。
 
 ## 位置
 
