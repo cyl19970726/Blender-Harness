@@ -27,7 +27,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: sudo apt-get update && sudo apt-get install -y blender python3-numpy
+      - run: sudo apt-get update && sudo apt-get install -y blender python3-numpy libegl1
       - run: blender --version
       - run: blender -b --factory-startup --python-expr "import numpy; print(numpy.__version__)"
       - run: python -m pip install -e .
