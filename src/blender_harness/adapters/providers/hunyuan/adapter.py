@@ -1,17 +1,22 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
+import shlex
 import shutil
+import stat
 import subprocess
 import tempfile
 import time
+import zipfile
+import zlib
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Protocol
+from pathlib import Path, PurePosixPath
+from typing import Any, Dict, List, Optional, Protocol, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 from urllib.request import urlopen
 
@@ -22,6 +27,20 @@ from .operations import OPERATIONS, OperationSpec, validate_request
 NORMALIZED_STATES = {"WAIT", "RUN", "DONE", "FAIL", "UNKNOWN"}
 ARTIFACT_STATES = {"NOT_READY", "PENDING", "FETCHING", "FETCH_FAILED", "VERIFIED"}
 SUBMISSION_STATES = {"RESERVED", "SUBMITTING", "SUBMIT_UNKNOWN", "SUBMIT_FAILED", "SUBMITTED"}
+
+MAX_ZIP_ENTRIES = 512
+MAX_ZIP_MEMBER_BYTES = 512 * 1024 * 1024
+MAX_ZIP_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
+MAX_ZIP_COMPRESSION_RATIO = 1000
+TEXTURE_MTL_DIRECTIVES = {
+    "bump", "disp", "decal", "norm", "refl",
+}
+MTL_SINGLE_VALUE_OPTIONS = {
+    "-blendu", "-blendv", "-boost", "-cc", "-clamp", "-colorspace",
+    "-imfchan", "-texres", "-type", "-bm",
+}
+MTL_DOUBLE_VALUE_OPTIONS = {"-mm"}
+MTL_VECTOR_OPTIONS = {"-o", "-s", "-t"}
 
 
 class Transport(Protocol):
@@ -290,6 +309,259 @@ def _validate_magic(path: Path, file_type: str) -> None:
         raise ContractError("STL artifact is too small to be valid: %s" % path)
 
 
+def _zip_member_path(name: str) -> PurePosixPath:
+    if not name or "\x00" in name or "\\" in name:
+        raise ContractError("ZIP contains an unsafe member path: %r" % name)
+    if name.startswith("/") or re.match(r"^[A-Za-z]:", name):
+        raise ContractError("ZIP contains an absolute member path: %s" % name)
+    path = PurePosixPath(name.rstrip("/"))
+    if not path.parts or any(part in {"", ".", ".."} for part in path.parts):
+        raise ContractError("ZIP contains a traversing member path: %s" % name)
+    return path
+
+
+def _checked_zip_entries(archive: zipfile.ZipFile) -> List[Tuple[zipfile.ZipInfo, PurePosixPath]]:
+    infos = archive.infolist()
+    if len(infos) > MAX_ZIP_ENTRIES:
+        raise ContractError("ZIP contains too many entries: %d" % len(infos))
+    checked: List[Tuple[zipfile.ZipInfo, PurePosixPath]] = []
+    seen: Set[str] = set()
+    total_size = 0
+    for info in infos:
+        member_path = _zip_member_path(info.filename)
+        collision_key = member_path.as_posix().casefold()
+        if collision_key in seen:
+            raise ContractError("ZIP contains duplicate or case-conflicting member: %s" % info.filename)
+        seen.add(collision_key)
+        unix_mode = (info.external_attr >> 16) & 0xFFFF
+        file_kind = stat.S_IFMT(unix_mode)
+        if file_kind == stat.S_IFLNK:
+            raise ContractError("ZIP symlink members are not allowed: %s" % info.filename)
+        if file_kind not in {0, stat.S_IFREG, stat.S_IFDIR}:
+            raise ContractError("ZIP special-file members are not allowed: %s" % info.filename)
+        if info.flag_bits & 0x1:
+            raise ContractError("encrypted ZIP members are not supported: %s" % info.filename)
+        if info.file_size > MAX_ZIP_MEMBER_BYTES:
+            raise ContractError("ZIP member exceeds size limit: %s" % info.filename)
+        total_size += info.file_size
+        if total_size > MAX_ZIP_TOTAL_BYTES:
+            raise ContractError("ZIP uncompressed size exceeds limit")
+        if info.file_size and info.compress_size == 0:
+            raise ContractError("ZIP member has impossible compression metadata: %s" % info.filename)
+        if info.compress_size and info.file_size / info.compress_size > MAX_ZIP_COMPRESSION_RATIO:
+            raise ContractError("ZIP member exceeds compression-ratio limit: %s" % info.filename)
+        checked.append((info, member_path))
+    return checked
+
+
+def _verify_zip_crc(path: Path) -> List[Tuple[zipfile.ZipInfo, PurePosixPath]]:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            checked = _checked_zip_entries(archive)
+            corrupt = archive.testzip()
+            if corrupt is not None:
+                raise ContractError("ZIP member failed CRC verification: %s" % corrupt)
+            return checked
+    except ContractError:
+        raise
+    except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise ContractError("invalid ZIP container: %s" % exc) from exc
+
+
+def _extract_zip_safely(path: Path, destination: Path) -> None:
+    try:
+        with zipfile.ZipFile(path) as archive:
+            checked = _checked_zip_entries(archive)
+            destination.mkdir(parents=True, exist_ok=False)
+            for info, member_path in checked:
+                target = destination.joinpath(*member_path.parts)
+                if info.is_dir():
+                    target.mkdir(parents=True, exist_ok=True)
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with archive.open(info, "r") as source, target.open("xb") as output:
+                    shutil.copyfileobj(source, output, length=1024 * 1024)
+                if target.stat().st_size != info.file_size:
+                    raise ContractError("ZIP member size changed while extracting: %s" % info.filename)
+            corrupt = archive.testzip()
+            if corrupt is not None:
+                raise ContractError("ZIP member failed CRC verification: %s" % corrupt)
+    except ContractError:
+        raise
+    except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
+        raise ContractError("invalid ZIP container: %s" % exc) from exc
+
+
+def _asset_reference(base: Path, reference: str, root: Path, source_kind: str) -> Path:
+    if not reference or "\x00" in reference or "\\" in reference:
+        raise ContractError("%s contains an unsafe asset reference: %r" % (source_kind, reference))
+    relative = PurePosixPath(reference)
+    if relative.is_absolute() or re.match(r"^[A-Za-z]:", reference):
+        raise ContractError("%s contains an absolute asset reference: %s" % (source_kind, reference))
+    if any(part in {"", ".", ".."} for part in relative.parts):
+        # A material in a subdirectory may legitimately use ../textures/foo.png.
+        candidate = (base / reference).resolve()
+    else:
+        candidate = base.joinpath(*relative.parts).resolve()
+    root_resolved = root.resolve()
+    try:
+        candidate.relative_to(root_resolved)
+    except ValueError as exc:
+        raise ContractError("%s asset reference escapes its bundle: %s" % (source_kind, reference)) from exc
+    if not candidate.is_file():
+        raise ContractError("%s references a missing file: %s" % (source_kind, reference))
+    return candidate
+
+
+def _read_asset_text(path: Path, kind: str) -> str:
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ContractError("%s is not UTF-8 text: %s" % (kind, path)) from exc
+    if "\x00" in text:
+        raise ContractError("%s contains NUL bytes: %s" % (kind, path))
+    return text
+
+
+def _mtl_texture_reference(value: str, line_number: int, material_path: Path) -> str:
+    try:
+        tokens = shlex.split(value, posix=True)
+    except ValueError as exc:
+        raise ContractError("MTL texture reference is malformed at line %d: %s" % (line_number, material_path)) from exc
+    index = 0
+    while index < len(tokens) and tokens[index].startswith("-"):
+        option = tokens[index].lower()
+        index += 1
+        if option in MTL_SINGLE_VALUE_OPTIONS:
+            count = 1
+        elif option in MTL_DOUBLE_VALUE_OPTIONS:
+            count = 2
+        elif option in MTL_VECTOR_OPTIONS:
+            count = 0
+            while index + count < len(tokens) and count < 3:
+                try:
+                    float(tokens[index + count])
+                except ValueError:
+                    break
+                count += 1
+            if count == 0:
+                raise ContractError("MTL texture option %s has no value at line %d: %s" % (option, line_number, material_path))
+        else:
+            raise ContractError("MTL texture option %s is unsupported at line %d: %s" % (option, line_number, material_path))
+        if index + count > len(tokens):
+            raise ContractError("MTL texture option %s is incomplete at line %d: %s" % (option, line_number, material_path))
+        index += count
+    if index >= len(tokens):
+        raise ContractError("MTL texture reference is empty at line %d: %s" % (line_number, material_path))
+    return " ".join(tokens[index:])
+
+
+def _validate_obj_closure(obj_path: Path, root: Path) -> Tuple[Set[Path], Set[Path]]:
+    text = _read_asset_text(obj_path, "OBJ")
+    vertex_count = 0
+    face_count = 0
+    face_indices: List[int] = []
+    material_paths: Set[Path] = set()
+    texture_paths: Set[Path] = set()
+    for line_number, raw_line in enumerate(text.splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        directive = parts[0].lower()
+        if directive == "v":
+            if len(parts) < 4:
+                raise ContractError("OBJ vertex is malformed at line %d: %s" % (line_number, obj_path))
+            try:
+                coordinates = tuple(float(value) for value in parts[1:4])
+            except ValueError as exc:
+                raise ContractError("OBJ vertex is malformed at line %d: %s" % (line_number, obj_path)) from exc
+            if not all(math.isfinite(value) for value in coordinates):
+                raise ContractError("OBJ vertex is non-finite at line %d: %s" % (line_number, obj_path))
+            vertex_count += 1
+        elif directive == "f":
+            if len(parts) < 4:
+                raise ContractError("OBJ face is malformed at line %d: %s" % (line_number, obj_path))
+            try:
+                indices = [int(value.split("/", 1)[0]) for value in parts[1:]]
+            except (ValueError, IndexError) as exc:
+                raise ContractError("OBJ face is malformed at line %d: %s" % (line_number, obj_path)) from exc
+            if any(index == 0 for index in indices):
+                raise ContractError("OBJ face uses forbidden zero index at line %d: %s" % (line_number, obj_path))
+            face_indices.extend(indices)
+            face_count += 1
+        elif directive == "mtllib":
+            try:
+                references = shlex.split(line[len(parts[0]):].strip(), posix=True)
+            except ValueError as exc:
+                raise ContractError("OBJ mtllib is malformed at line %d: %s" % (line_number, obj_path)) from exc
+            if not references:
+                raise ContractError("OBJ mtllib is empty at line %d: %s" % (line_number, obj_path))
+            for reference in references:
+                material_paths.add(_asset_reference(obj_path.parent, reference, root, "OBJ"))
+    if vertex_count < 3 or face_count < 1:
+        raise ContractError("OBJ must contain at least three vertices and one face: %s" % obj_path)
+    if any(index > vertex_count or index < -vertex_count for index in face_indices):
+        raise ContractError("OBJ face references a vertex outside the file: %s" % obj_path)
+    for material_path in material_paths:
+        material_text = _read_asset_text(material_path, "MTL")
+        for line_number, raw_line in enumerate(material_text.splitlines(), start=1):
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split(maxsplit=1)
+            directive = parts[0].lower()
+            if directive not in TEXTURE_MTL_DIRECTIVES and not directive.startswith("map_"):
+                continue
+            if len(parts) != 2:
+                raise ContractError("MTL texture reference is empty at line %d: %s" % (line_number, material_path))
+            reference = _mtl_texture_reference(parts[1], line_number, material_path)
+            texture_paths.add(_asset_reference(material_path.parent, reference, root, "MTL"))
+    return material_paths, texture_paths
+
+
+def _validate_obj_bundle(root: Path) -> Tuple[Path, Set[Path], Set[Path]]:
+    obj_files = sorted(path for path in root.rglob("*") if path.is_file() and path.suffix.casefold() == ".obj")
+    if len(obj_files) != 1:
+        raise ContractError("OBJ ZIP bundle must contain exactly one primary OBJ; found %d" % len(obj_files))
+    materials, textures = _validate_obj_closure(obj_files[0], root)
+    return obj_files[0], materials, textures
+
+
+def _unpacked_manifest(
+    root: Path,
+    run_dir: Path,
+    primary: Path,
+    materials: Set[Path],
+    textures: Set[Path],
+) -> List[Dict[str, Any]]:
+    files: List[Dict[str, Any]] = []
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        role = "auxiliary"
+        if path == primary:
+            role = "primary_geometry"
+        elif path in materials:
+            role = "material_library"
+        elif path in textures:
+            role = "texture"
+        files.append({
+            "path": str(path.relative_to(run_dir)),
+            "sha256": sha256_file(path),
+            "size_bytes": path.stat().st_size,
+            "role": role,
+            "format": path.suffix[1:].upper() if path.suffix else "BIN",
+        })
+    return files
+
+
+def _crc32_file(path: Path) -> int:
+    checksum = 0
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            checksum = zlib.crc32(chunk, checksum)
+    return checksum & 0xFFFFFFFF
+
+
 class HunyuanAdapter:
     provider = "hunyuan"
     api_version = "2025-05-13"
@@ -434,7 +706,61 @@ class HunyuanAdapter:
                 path = self.store.run_dir(handle_id) / item["path"]
                 if not path.is_file() or sha256_file(path) != item["sha256"]:
                     raise ContractError("cached Hunyuan artifact is missing or changed: %s" % path)
-                _validate_magic(path, str(item.get("type") or ""))
+                if item.get("size_bytes") is not None and path.stat().st_size != item["size_bytes"]:
+                    raise ContractError("cached Hunyuan artifact size changed: %s" % path)
+                provider_type = str(item.get("provider_type") or item.get("type") or "").upper()
+                container_type = str(item.get("container_type") or provider_type).upper()
+                if container_type == "ZIP":
+                    if provider_type != "OBJ":
+                        raise ContractError("ZIP containers are currently supported only for provider Type=OBJ")
+                    entries = _verify_zip_crc(path)
+                    unpacked_root_value = item.get("unpacked_root")
+                    primary_value = item.get("primary_entrypoint")
+                    unpacked_files = item.get("unpacked_files")
+                    if not unpacked_root_value or not primary_value or not isinstance(unpacked_files, list):
+                        raise ContractError("cached OBJ ZIP manifest is missing unpacked bundle metadata")
+                    unpacked_root = self.store.run_dir(handle_id) / unpacked_root_value
+                    root_resolved = unpacked_root.resolve()
+                    if not unpacked_root.is_dir():
+                        raise ContractError("cached OBJ ZIP unpacked root is missing: %s" % unpacked_root)
+                    archive_metadata = {
+                        member.as_posix(): (info.file_size, info.CRC)
+                        for info, member in entries if not info.is_dir()
+                    }
+                    recorded_paths: Set[str] = set()
+                    for member in unpacked_files:
+                        member_path = self.store.run_dir(handle_id) / member["path"]
+                        try:
+                            member_path.resolve().relative_to(root_resolved)
+                        except ValueError as exc:
+                            raise ContractError("cached OBJ ZIP member escapes unpacked root: %s" % member_path) from exc
+                        if not member_path.is_file() or sha256_file(member_path) != member["sha256"]:
+                            raise ContractError("cached Hunyuan unpacked member is missing or changed: %s" % member_path)
+                        if member_path.stat().st_size != member["size_bytes"]:
+                            raise ContractError("cached Hunyuan unpacked member size changed: %s" % member_path)
+                        relative_member = member_path.relative_to(unpacked_root).as_posix()
+                        recorded_paths.add(relative_member)
+                        archive_size_crc = archive_metadata.get(relative_member)
+                        if archive_size_crc is None or archive_size_crc != (
+                            member_path.stat().st_size,
+                            _crc32_file(member_path),
+                        ):
+                            raise ContractError("cached Hunyuan unpacked member differs from its ZIP container: %s" % member_path)
+                    actual_paths = {
+                        candidate.relative_to(unpacked_root).as_posix()
+                        for candidate in unpacked_root.rglob("*") if candidate.is_file()
+                    }
+                    archive_paths = {member.as_posix() for info, member in entries if not info.is_dir()}
+                    if recorded_paths != actual_paths or archive_paths != actual_paths:
+                        raise ContractError("cached OBJ ZIP member set does not match its container manifest")
+                    primary, _, _ = _validate_obj_bundle(unpacked_root)
+                    recorded_primary = self.store.run_dir(handle_id) / primary_value
+                    if primary.resolve() != recorded_primary.resolve():
+                        raise ContractError("cached OBJ ZIP primary entrypoint changed")
+                else:
+                    _validate_magic(path, provider_type)
+                    if provider_type == "OBJ":
+                        _validate_obj_closure(path, path.parent)
             if not manifest.get("files"):
                 raise ContractError("cached Hunyuan manifest contains no files")
             handle.artifact_status = "VERIFIED"
@@ -453,28 +779,82 @@ class HunyuanAdapter:
         output_dir = self.store.run_dir(handle_id) / "artifacts"
         output_dir.mkdir(parents=True, exist_ok=True)
         manifest_files: List[Dict[str, Any]] = []
+        all_unpacked_files: List[Dict[str, Any]] = []
+        primary_entrypoints: List[str] = []
         for index, item in enumerate(result_files, start=1):
-            item_type = str(item.get("type") or fallback_type or _type_from_url(item["url"])).upper()
-            if item_type not in spec.expected_types:
+            provider_type = str(item.get("type") or fallback_type or _type_from_url(item["url"])).upper()
+            if provider_type not in spec.expected_types:
                 raise ContractError(
                     "provider returned unexpected artifact type %s for %s (expected %s)"
-                    % (item_type or "<empty>", handle.operation, ", ".join(spec.expected_types))
+                    % (provider_type or "<empty>", handle.operation, ", ".join(spec.expected_types))
                 )
-            extension = _extension(item_type, item["url"])
+            extension = _extension(provider_type, item["url"])
             destination = output_dir / ("%02d-%s%s" % (index, spec.artifact_role, extension))
             fd, staged_name = tempfile.mkstemp(prefix=".download-", suffix=extension, dir=str(output_dir))
             os.close(fd)
             staged = Path(staged_name)
+            bundle_stage: Optional[Path] = None
             try:
                 self.downloader.download(item["url"], staged)
-                _validate_magic(staged, item_type)
+                is_obj_zip = provider_type == "OBJ" and zipfile.is_zipfile(staged)
+                if is_obj_zip:
+                    _verify_zip_crc(staged)
+                    bundle_stage = Path(tempfile.mkdtemp(prefix=".obj-bundle-", dir=str(output_dir)))
+                    staged_container = bundle_stage / ("%02d-%s.zip" % (index, spec.artifact_role))
+                    os.replace(str(staged), str(staged_container))
+                    unpacked_stage = bundle_stage / "unpacked"
+                    _extract_zip_safely(staged_container, unpacked_stage)
+                    primary_stage, _, _ = _validate_obj_bundle(unpacked_stage)
+                    final_bundle = output_dir / ("%02d-%s-bundle" % (index, spec.artifact_role))
+                    if final_bundle.exists():
+                        raise ContractError("unmanifested Hunyuan bundle already exists: %s" % final_bundle)
+                    os.replace(str(bundle_stage), str(final_bundle))
+                    bundle_stage = None
+                    destination = final_bundle / staged_container.name
+                    unpacked_root = final_bundle / "unpacked"
+                    primary = unpacked_root / primary_stage.relative_to(unpacked_stage)
+                    materials, textures = _validate_obj_closure(primary, unpacked_root)
+                    unpacked_files = _unpacked_manifest(
+                        unpacked_root,
+                        self.store.run_dir(handle_id),
+                        primary,
+                        materials,
+                        textures,
+                    )
+                    primary_entrypoint = str(primary.relative_to(self.store.run_dir(handle_id)))
+                    all_unpacked_files.extend(unpacked_files)
+                    primary_entrypoints.append(primary_entrypoint)
+                    manifest_files.append({
+                        "role": spec.artifact_role,
+                        "type": provider_type,
+                        "provider_type": provider_type,
+                        "container_type": "ZIP",
+                        "path": str(destination.relative_to(self.store.run_dir(handle_id))),
+                        "sha256": sha256_file(destination),
+                        "size_bytes": destination.stat().st_size,
+                        "container_sha256": sha256_file(destination),
+                        "container_size_bytes": destination.stat().st_size,
+                        "unpacked_root": str(unpacked_root.relative_to(self.store.run_dir(handle_id))),
+                        "primary_entrypoint": primary_entrypoint,
+                        "unpacked_files": unpacked_files,
+                        "source_url": redact_url(item["url"]),
+                        "preview_url": redact_url(item["preview_url"]) if item.get("preview_url") else None,
+                    })
+                    continue
+                _validate_magic(staged, provider_type)
+                if provider_type == "OBJ":
+                    _validate_obj_closure(staged, staged.parent)
                 os.replace(str(staged), str(destination))
             finally:
                 if staged.exists():
                     staged.unlink()
+                if bundle_stage is not None and bundle_stage.exists():
+                    shutil.rmtree(bundle_stage)
             manifest_files.append({
                 "role": spec.artifact_role,
-                "type": item_type,
+                "type": provider_type,
+                "provider_type": provider_type,
+                "container_type": provider_type,
                 "path": str(destination.relative_to(self.store.run_dir(handle_id))),
                 "sha256": sha256_file(destination),
                 "size_bytes": destination.stat().st_size,
@@ -502,6 +882,10 @@ class HunyuanAdapter:
             "result_credit_details": handle.last_response.get("ResultCreditDetails"),
             "files": manifest_files,
         }
+        if len(primary_entrypoints) == 1:
+            manifest["primary_entrypoint"] = primary_entrypoints[0]
+        if all_unpacked_files:
+            manifest["unpacked_files"] = all_unpacked_files
         write_json_atomic(manifest_path, manifest)
         handle.artifact_status = "VERIFIED"
         handle.artifact_error = None

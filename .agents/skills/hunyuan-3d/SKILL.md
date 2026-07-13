@@ -37,6 +37,7 @@ bh hunyuan fetch <handle-id>
 - 状态只允许 WAIT/RUN/DONE/FAIL/UNKNOWN；UNKNOWN 不得猜测。
 - URL 有效期有限，DONE 后应及时 fetch；manifest 不保存签名 query。
 - 已有 artifact manifest 时 fetch 复验本地哈希，不重复下载或悄悄覆盖。
+- `Type=OBJ` 可能实际下载为 OBJ/MTL/texture ZIP bundle；以 manifest 的 `provider_type`、`container_type`、`primary_entrypoint` 和 `unpacked_files` 为准，不按 URL 后缀猜容器，也不要手工把 ZIP 改名成 OBJ。
 
 ## 资产角色
 
@@ -54,6 +55,7 @@ manifest 必须保持 `provider_done_is_asset_approval: false`。
 - AutoRig 人形输入应为干净 A/T Pose，避免松散衣物、道具和复杂配饰；完整穿衣角色不应直接作为首个绑骨输入。
 - 项目曾多次观察到文生动作输出为通用动作骨架，不能可靠得到带揭小贤 mesh 的成品。因此把它视为 motion source，并保留 Blender retarget/bake。
 - 图生 3D、自动拓扑、UV、纹理、部件拆分都要回 Blender Quicklook/专项 probe；覆盖 capability 不代表应该按顺序全部调用。
+- 一次揭小贤多视图 `geometry.pro / Normal / 30k` live run 得到的 GLB 在属性 seam 上拆点；`1e-8` 精确焊接可从 20,004 顶点恢复为 15,002 顶点的单一闭合壳。原始 component/boundary 统计因此不能单独作为 kill gate，但焊接后仍是 30k 随机三角面，必须用肩、胯、腕变形探针判断是否值得 retopo。
 - 旧 skill 中“frame-1 neutral、骨骼 DAMP、28→52 骨映射”等属于一次揭小贤 retarget case。复用前先在当前 rig 上做小探针，不升级为通用 validator。
 
 ## 验证等级

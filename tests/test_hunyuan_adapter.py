@@ -1,7 +1,12 @@
+import hashlib
+import io
 import json
 import os
+import stat
 import tempfile
 import unittest
+import warnings
+import zipfile
 from pathlib import Path
 
 from blender_harness.adapters.providers.hunyuan.adapter import HunyuanAdapter, JobStore
@@ -36,7 +41,47 @@ class FakeDownloader:
             destination.write_bytes(b"asset-data")
 
 
+class BytesDownloader:
+    def __init__(self, payload):
+        self.payload = payload
+        self.calls = []
+
+    def download(self, url, destination):
+        self.calls.append((url, destination))
+        destination.write_bytes(self.payload)
+
+
+def zip_bytes(entries, compression=zipfile.ZIP_DEFLATED):
+    output = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(output, "w", compression=compression) as archive:
+            for name, value in entries:
+                if isinstance(name, zipfile.ZipInfo):
+                    archive.writestr(name, value)
+                else:
+                    archive.writestr(name, value)
+    return output.getvalue()
+
+
+def valid_obj_zip():
+    return zip_bytes([
+        ("character/model.obj", "mtllib ../materials/main.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+        ("materials/main.mtl", "newmtl body\nmap_Kd -s 1 1 1 \"../textures/albedo image.png\"\n"),
+        ("textures/albedo image.png", b"synthetic-texture-payload"),
+    ])
+
+
 class HunyuanAdapterTest(unittest.TestCase):
+    def _obj_transport(self, suffix=""):
+        return FakeTransport({
+            "SubmitHunyuanTo3DProJob": [{"JobId": "job-obj" + suffix}],
+            "QueryHunyuanTo3DProJob": [{
+                "Status": "DONE",
+                "ResultFile3Ds": [{"Type": "OBJ", "Url": "https://cos.example/model.obj?token=private"}],
+            }],
+        })
+
     def test_async_job_is_idempotent_resumable_and_downloaded(self):
         transport = FakeTransport({
             "SubmitHunyuanTo3DProJob": [{"JobId": "job-1", "RequestId": "request-submit"}],
@@ -166,6 +211,123 @@ class HunyuanAdapterTest(unittest.TestCase):
                 adapter.fetch(handle.handle_id)
             artifacts = Path(directory) / handle.handle_id / "artifacts"
             self.assertFalse(any(path.name.startswith("01-") for path in artifacts.glob("*")))
+
+    def test_obj_provider_type_can_download_a_verified_zip_bundle(self):
+        with tempfile.TemporaryDirectory() as directory:
+            downloader = BytesDownloader(valid_obj_zip())
+            adapter = HunyuanAdapter(self._obj_transport(), JobStore(Path(directory)), downloader)
+            handle = adapter.submit("geometry.pro", {"Prompt": "角色素体"}, "obj-zip")
+            adapter.poll_once(handle.handle_id)
+            manifest_path = adapter.fetch(handle.handle_id)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            artifact = manifest["files"][0]
+
+            self.assertEqual(artifact["type"], "OBJ")
+            self.assertEqual(artifact["provider_type"], "OBJ")
+            self.assertEqual(artifact["container_type"], "ZIP")
+            self.assertTrue(artifact["path"].endswith(".zip"))
+            self.assertEqual(artifact["sha256"], artifact["container_sha256"])
+            self.assertEqual(artifact["size_bytes"], artifact["container_size_bytes"])
+            self.assertEqual(manifest["primary_entrypoint"], artifact["primary_entrypoint"])
+            self.assertEqual(manifest["unpacked_files"], artifact["unpacked_files"])
+            roles = {item["role"] for item in artifact["unpacked_files"]}
+            self.assertEqual(roles, {"primary_geometry", "material_library", "texture"})
+            self.assertNotIn("token=", json.dumps(manifest))
+            self.assertEqual(adapter.fetch(handle.handle_id), manifest_path)
+            self.assertEqual(len(downloader.calls), 1)
+
+            texture = next(item for item in artifact["unpacked_files"] if item["role"] == "texture")
+            (Path(directory) / handle.handle_id / texture["path"]).write_bytes(b"tampered")
+            with self.assertRaisesRegex(ContractError, "unpacked member"):
+                adapter.fetch(handle.handle_id)
+
+            changed_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            changed_member = next(
+                item for item in changed_manifest["files"][0]["unpacked_files"] if item["role"] == "texture"
+            )
+            changed_member["sha256"] = hashlib.sha256(b"tampered").hexdigest()
+            changed_member["size_bytes"] = len(b"tampered")
+            manifest_path.write_text(json.dumps(changed_manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "differs from its ZIP container"):
+                adapter.fetch(handle.handle_id)
+
+    def test_obj_zip_rejects_unsafe_names_symlinks_and_duplicates(self):
+        symlink = zipfile.ZipInfo("linked.obj")
+        symlink.create_system = 3
+        symlink.external_attr = (stat.S_IFLNK | 0o777) << 16
+        attacks = {
+            "absolute": [("/escape.txt", b"bad")],
+            "traversal": [("../escape.txt", b"bad")],
+            "symlink": [(symlink, "model.obj")],
+            "duplicate": [("copy.txt", b"one"), ("copy.txt", b"two")],
+            "case-conflict": [("Copy.txt", b"one"), ("copy.txt", b"two")],
+        }
+        for name, additions in attacks.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                payload = zip_bytes([
+                    ("model.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+                    *additions,
+                ])
+                adapter = HunyuanAdapter(
+                    self._obj_transport("-" + name), JobStore(Path(directory)), BytesDownloader(payload)
+                )
+                handle = adapter.submit("geometry.pro", {"Prompt": "测试"}, "attack-" + name)
+                adapter.poll_once(handle.handle_id)
+                with self.assertRaises(ContractError):
+                    adapter.fetch(handle.handle_id)
+                artifacts = Path(directory) / handle.handle_id / "artifacts"
+                self.assertFalse(any(path.name.endswith("-bundle") for path in artifacts.glob("*")))
+
+    def test_obj_zip_rejects_zip_bomb_crc_failure_and_broken_closure(self):
+        corrupt = bytearray(zip_bytes([
+            ("model.obj", b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+            ("payload.bin", b"unique-crc-payload"),
+        ], compression=zipfile.ZIP_STORED))
+        offset = corrupt.find(b"unique-crc-payload")
+        self.assertGreaterEqual(offset, 0)
+        corrupt[offset] ^= 0x01
+        cases = {
+            "zip-bomb": zip_bytes([
+                ("model.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+                ("zeros.bin", b"\0" * (2 * 1024 * 1024)),
+            ]),
+            "crc": bytes(corrupt),
+            "multiple-primary": zip_bytes([
+                ("one.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+                ("two.obj", "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+            ]),
+            "missing-mtl": zip_bytes([
+                ("model.obj", "mtllib missing.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+            ]),
+            "missing-texture": zip_bytes([
+                ("model.obj", "mtllib model.mtl\nv 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"),
+                ("model.mtl", "newmtl body\nmap_Kd missing.png\n"),
+            ]),
+        }
+        for name, payload in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                adapter = HunyuanAdapter(
+                    self._obj_transport("-" + name), JobStore(Path(directory)), BytesDownloader(payload)
+                )
+                handle = adapter.submit("geometry.pro", {"Prompt": "测试"}, "invalid-" + name)
+                adapter.poll_once(handle.handle_id)
+                with self.assertRaises(ContractError):
+                    adapter.fetch(handle.handle_id)
+
+    def test_plain_obj_remains_a_plain_obj_container(self):
+        payload = b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n"
+        with tempfile.TemporaryDirectory() as directory:
+            adapter = HunyuanAdapter(
+                self._obj_transport("-plain"), JobStore(Path(directory)), BytesDownloader(payload)
+            )
+            handle = adapter.submit("geometry.pro", {"Prompt": "测试"}, "plain-obj")
+            adapter.poll_once(handle.handle_id)
+            manifest = json.loads(adapter.fetch(handle.handle_id).read_text(encoding="utf-8"))
+            artifact = manifest["files"][0]
+            self.assertEqual(artifact["provider_type"], "OBJ")
+            self.assertEqual(artifact["container_type"], "OBJ")
+            self.assertTrue(artifact["path"].endswith(".obj"))
+            self.assertNotIn("unpacked_files", artifact)
 
     def test_atomic_reservation_blocks_reentrant_duplicate_submit(self):
         class ReentrantTransport:

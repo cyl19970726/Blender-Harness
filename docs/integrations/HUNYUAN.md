@@ -29,7 +29,11 @@ JobHandle 分开记录三种状态：
 - `provider_status`: `WAIT / RUN / DONE / FAIL / UNKNOWN`；
 - `artifact_status`: `NOT_READY / PENDING / FETCHING / FETCH_FAILED / VERIFIED`。
 
-供应商 `DONE` 只表示结果 URL envelope 已返回。下载失败会持久化为 `FETCH_FAILED` 和 `artifact_error`；只有下载、类型检查、魔数检查与 SHA256 全部完成后才是 `VERIFIED`。下载先进入 staging 文件，验证通过后才原子 rename 到最终文件名。
+供应商 `DONE` 只表示结果 URL envelope 已返回。下载失败会持久化为 `FETCH_FAILED` 和 `artifact_error`；只有下载、类型检查、容器/魔数检查与 SHA256 全部完成后才是 `VERIFIED`。下载先进入 staging，验证通过后才原子 rename 到最终路径。
+
+腾讯返回的逻辑 `Type=OBJ` 不保证 HTTP payload 是裸 OBJ；live run 已确认它可以是包含 OBJ、MTL 和贴图的 ZIP bundle。Adapter 因而分开记录 `provider_type` 与 `container_type`。OBJ ZIP 必须先通过路径穿越、符号链接、重复路径、加密成员、条目/体积/压缩比和 CRC 检查，再在 staging 中解包；bundle 必须恰有一个主 OBJ，且 OBJ → MTL → texture 引用闭包完整。manifest 同时记录容器哈希、`primary_entrypoint` 和每个解包成员的角色、格式、大小与 SHA256。缓存复验还会比对解包成员与 ZIP 的 size/CRC，不能只看容器“非空”就写 `VERIFIED`。
+
+旧 manifest 若把 ZIP 误记为 `.obj`，属于不可追认的历史证据：保留原 run 并记录 deviation，不能原地改名后假装它从一开始就经过了新 validator。后续 fetch 使用新合同；确需迁移时创建有 lineage 的新 derivative/run。
 
 响应历史和 `job.json` 中的 COS URL 会移除 query。下载所需的原始短期 URL 单独保存在权限为 `0600` 的 `result-urls.private.json`；artifact manifest 只保存脱敏 URL。
 
@@ -48,4 +52,4 @@ JobHandle 分开记录三种状态：
 
 ## 当前验证等级
 
-registry 和请求合同已有 recorded/synthetic tests；TC3 transport、幂等恢复、下载原子性和 manifest 边界已实现。未配置腾讯凭证的 CI 不声称 live verified；每个 operation 只有在保存脱敏真实响应并经过 Blender Quicklook 后，才可分别升级 maturity。
+registry 和请求合同已有 recorded/synthetic tests；TC3 transport、幂等恢复、下载原子性、OBJ bundle 安全解包和 manifest 边界已实现。当前单元测试覆盖 ZIP traversal/symlink/case collision、zip bomb、CRC、缺失 MTL/texture、缓存成员篡改与裸 OBJ 兼容。未配置腾讯凭证的 CI 不声称 live verified；每个 operation 只有在保存脱敏真实响应并经过 Blender Quicklook 后，才可分别升级 maturity。
