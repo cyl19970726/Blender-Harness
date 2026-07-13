@@ -68,7 +68,7 @@ _SPECS = [
     OperationSpec(
         "topology.reduce", "topology_reduction", "SubmitReduceFaceJob",
         "DescribeReduceFaceJob", "describe", "reduced_topology_candidate",
-        ("OBJ", "GLB", "FBX"), 1,
+        ("OBJ", "GLB", "IMAGE"), 1,
         warning="Automatic reduction must pass Blender wireframe and deformation review.",
     ),
     OperationSpec(

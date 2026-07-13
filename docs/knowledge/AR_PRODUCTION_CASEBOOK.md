@@ -76,6 +76,50 @@
 - **lesson**: 把主轴、transform、真实镜头尺寸、面数、纹理和包体作为路线探针；按目标画面选择档位。
 - **scope limit**: 30k、1024、2–5MB 等数字不是跨资产硬门槛，必须由发布目标配置。
 
+## HY-004 · GLB seam 拆点把闭合壳误报为 398 components
+
+- **date**: 2026-07-13
+- **scope**: 揭小贤 neutral A-pose；Hunyuan Pro 3.1 `Normal`、六个辅助视图、30k faces；Blender 5.1.2。
+- **evidence**: route `jiexiaoxian-basemesh-challenger-v1`，revision `jxx-hunyuan-basemesh-r1`，probe `hunyuan-neutral-basemesh-001`，EvidenceBundle `evidence-753e5daf738e551fce85`；raw GLB SHA256 `1a7149d2eda6737a91968ae938610d6188d6a5fa6f941c2c5ace80271e9721bf`。
+- **observation**: raw inventory 为 20,004 vertices、398 indexed components、9,350 boundary edges、5,002 duplicate-coordinate vertices。`1e-8` exact weld 后稳定变为 15,002 vertices、1 component、0 boundary、0 multi-face；说明主要是属性 seam 的索引拆点，不是肉眼可见的 398 块碎壳。
+- **decision impact**: 原本基于 component/boundary 的直接 abandon 被撤回，候选进入一次无额外 API 成本的临时 rig probe；随后因随机 30k triangles、手脸无增益和目标姿势无优势而停止 direct-basemesh 路线。
+- **lesson**: 对 provider GLB 先区分“索引/属性 seam”与“几何开裂”；exact-weld derivative + source hash lineage 是便宜判别器。component 数不能单独成为 kill gate。
+- **scope limit**: 不推出所有 duplicate vertices 都可安全焊接，也不推出闭合就适合变形；UV、normal、材质 seam 和变形仍须分别复核。
+- **retirement condition**: importer/provider 改变顶点属性编码，或新的 fixture 证明相同统计对应真实分离几何时重验。
+
+## HY-005 · 智能拓扑的 OBJ 保留 quad，GLB 传输会三角化
+
+- **date**: 2026-07-13
+- **scope**: HY-004 同一 GLB 输入；Polygon 1.5 `topology.reduce`，`PolygonType=quadrilateral`、`FaceLevel=low`；Blender 5.1.2。
+- **evidence**: revision `jxx-hunyuan-smart-topology-r2`，probe `hunyuan-smart-topology-lowquad-002`，EvidenceBundle `evidence-8861dcaf1c2d0812479f`；OBJ SHA256 `42ec4647893890fa8b1ee2231bf9c4ec4f9720404dc409a2123b1b9adeb2775c`。
+- **observation**: companion GLB 导入为 9,865 triangle faces；同一结果的 OBJ 为 4,945 vertices、5,198 faces，其中 4,669 quads、529 triangles。OBJ body flow 明显比 raw 30k random triangles 规整，但 low 档损失脸、手和发型细节，并仍有 54 boundary edges、17 multi-face edges，主要落在下头/颈附近。临时自动权重能运行，但不构成生产批准。
+- **decision impact**: GLB 继续用于自包含 shape Quicklook；polygon arity/edge-flow review 改以 OBJ 为权威。low 档只支持一次同输入 `quadrilateral + high` 对照，不进入 AutoRig/UV/衣服。
+- **lesson**: 输出格式是证据合同的一部分。glTF primitive 的三角化不能证明 provider 忽略了 quad 请求；必须审查能保留多边形拓扑的 OBJ/FBX，并对账同一 JobHandle。
+- **scope limit**: 不推出 OBJ 总是优于 GLB；GLB 仍适合自包含预览与 runtime。也不推出“90% quads”自动等于 deformation-ready edge flow。
+- **retirement condition**: provider 开始返回可保留 quad metadata 的新格式，或官方输出合同改变时重验。
+
+## HY-006 · Provider 逻辑类型与真实容器/附件不一致
+
+- **date**: 2026-07-13
+- **scope**: Hunyuan `geometry.pro` 与 `topology.reduce` live fetch；API version `2025-05-13`。
+- **evidence**: HY-004/HY-005 route；adapter tests `test_obj_provider_type_can_download_a_verified_zip_bundle` 与 `test_topology_reduce_accepts_image_obj_and_glb_result_set`。
+- **observation**: `geometry.pro` 逻辑 `Type=OBJ` 实际是 OBJ/MTL/texture ZIP；`topology.reduce` 官方/实跑结果集合包含 `IMAGE + OBJ + GLB`，其中 IMAGE 为 preview PNG。旧实现把 ZIP 写成 `.obj` 并过早标为 VERIFIED；旧 registry 又会拒绝 IMAGE 附件。
+- **decision impact**: Adapter 分离 `provider_type`/`container_type`，安全解包并校验 OBJ dependency closure；topology preview 只作为 `preview_image`，以真实 PNG/JPEG 容器校验。历史错误 manifest 保留为 deviation，不原地追认。
+- **lesson**: provider 枚举、URL 后缀与字节容器必须分别验证；辅助预览不能继承几何资产角色。
+- **scope limit**: 当前只允许已记录的 OBJ ZIP 和 topology IMAGE 合同；未知容器继续 fail closed，不能泛化为自动解压任意 archive。
+- **retirement condition**: 官方 ResultFile3Ds/File3D 合同或 recorded live envelope 变化时更新 fixture 与 allow-list。
+
+## TRIPO-001 · 旧 v2 脚本不是当前 v3 Adapter
+
+- **date**: 2026-07-13
+- **scope**: 本地 `ar-3d-pipeline` 旧 skill 与 `scripts/tripo_gen.py`；Tripo 官方 v3 文档审计，未调用付费 API。
+- **evidence**: `/Users/hhh0x/.claude/skills/ar-3d-pipeline/SKILL.md` 与仓库 `scripts/tripo_gen.py`；官方 v3 docs `https://developers.tripo3d.ai/en/docs`。
+- **observation**: 本地没有独立 Tripo skill/adapter、recorded fixture 或 credentials。旧脚本使用 v2 聚合 endpoint、`urlretrieve`、进程内轮询、无幂等 reservation/原子落盘/hash/短期 URL 隔离，并会误处理非数字的新模型版本。官方当前主 API 为 `/v3`，提供 P1 direct low-poly、Smart Retopology、rig/retarget 等独立任务。
+- **decision impact**: Tripo 将作为新的 provider adapter 构建，共享 submit/poll/fetch/manifest 状态边界；旧脚本只作为失败经验与字段迁移来源，不恢复为入口。
+- **lesson**: provider 对照必须固定版本、输入和证据板，并比较可修 topology/目标姿势，不只比较预览。provider-specific action/path 留在 registry，共享 Harness 状态机。
+- **scope limit**: 本 case 尚未证明 Tripo 输出优于 Hunyuan，也不固化旧 skill 中关于 quad/retarget 的过期结论。
+- **retirement condition**: Tripo v3 adapter 获得 recorded/live fixtures 后，以新合同替换本审计条目中的推断。
+
 ## MAG-001 · 技术路线成立但作品仍像竖向视频窗
 
 - **date**: 2026-06-26—2026-06-28

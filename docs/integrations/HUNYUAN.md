@@ -33,6 +33,8 @@ JobHandle 分开记录三种状态：
 
 腾讯返回的逻辑 `Type=OBJ` 不保证 HTTP payload 是裸 OBJ；live run 已确认它可以是包含 OBJ、MTL 和贴图的 ZIP bundle。Adapter 因而分开记录 `provider_type` 与 `container_type`。OBJ ZIP 必须先通过路径穿越、符号链接、重复路径、加密成员、条目/体积/压缩比和 CRC 检查，再在 staging 中解包；bundle 必须恰有一个主 OBJ，且 OBJ → MTL → texture 引用闭包完整。manifest 同时记录容器哈希、`primary_entrypoint` 和每个解包成员的角色、格式、大小与 SHA256。缓存复验还会比对解包成员与 ZIP 的 size/CRC，不能只看容器“非空”就写 `VERIFIED`。
 
+`topology.reduce` 的官方 `ResultFile3Ds` 会同时返回 `IMAGE + OBJ + GLB`。其中 `IMAGE` 是预览附件，不是几何：Adapter 仅在该 operation 允许它，并进一步识别为 `container_type=PNG/JPEG`、使用真实扩展名和 `preview_image` 角色、校验 URL 后缀与内容魔数。其他 operation 返回 `IMAGE`、不支持的图片格式或后缀/内容不符都 fail closed。
+
 旧 manifest 若把 ZIP 误记为 `.obj`，属于不可追认的历史证据：保留原 run 并记录 deviation，不能原地改名后假装它从一开始就经过了新 validator。后续 fetch 使用新合同；确需迁移时创建有 lineage 的新 derivative/run。
 
 响应历史和 `job.json` 中的 COS URL 会移除 query。下载所需的原始短期 URL 单独保存在权限为 `0600` 的 `result-urls.private.json`；artifact manifest 只保存脱敏 URL。

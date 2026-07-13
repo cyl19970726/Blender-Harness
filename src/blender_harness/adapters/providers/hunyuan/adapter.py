@@ -41,6 +41,7 @@ MTL_SINGLE_VALUE_OPTIONS = {
 }
 MTL_DOUBLE_VALUE_OPTIONS = {"-mm"}
 MTL_VECTOR_OPTIONS = {"-o", "-s", "-t"}
+IMAGE_SUFFIX_TYPES = {".png": "PNG", ".jpg": "JPEG", ".jpeg": "JPEG"}
 
 
 class Transport(Protocol):
@@ -288,8 +289,41 @@ def _extension(file_type: str, url: str) -> str:
     return suffix if re.match(r"^\.[a-z0-9]{1,8}$", suffix) else ".bin"
 
 
+def _image_staging_extension(url: str) -> str:
+    suffix = Path(urlparse(url).path).suffix.lower()
+    if suffix and suffix not in IMAGE_SUFFIX_TYPES:
+        raise ContractError("provider IMAGE uses an unsupported URL suffix: %s" % suffix)
+    return suffix or ".image"
+
+
+def _image_container_type(path: Path, url: str) -> str:
+    with path.open("rb") as handle:
+        head = handle.read(32)
+        if path.stat().st_size >= 2:
+            handle.seek(-2, os.SEEK_END)
+            tail = handle.read(2)
+        else:
+            tail = b""
+    if head.startswith(b"\x89PNG\r\n\x1a\n"):
+        detected = "PNG"
+    elif head.startswith(b"\xff\xd8\xff") and tail == b"\xff\xd9":
+        detected = "JPEG"
+    else:
+        raise ContractError("provider IMAGE is neither PNG nor JPEG: %s" % path)
+    suffix = Path(urlparse(url).path).suffix.lower()
+    suffix_type = IMAGE_SUFFIX_TYPES.get(suffix)
+    if suffix and suffix_type is None:
+        raise ContractError("provider IMAGE uses an unsupported URL suffix: %s" % suffix)
+    if suffix_type is not None and suffix_type != detected:
+        raise ContractError(
+            "provider IMAGE content does not match URL suffix %s: detected %s" % (suffix, detected)
+        )
+    return detected
+
+
 def _validate_magic(path: Path, file_type: str) -> None:
-    head = path.read_bytes()[:32]
+    with path.open("rb") as handle:
+        head = handle.read(32)
     if not head:
         raise ContractError("downloaded artifact is empty: %s" % path)
     kind = file_type.upper()
@@ -299,6 +333,15 @@ def _validate_magic(path: Path, file_type: str) -> None:
         raise ContractError("FBX artifact has invalid magic: %s" % path)
     if kind == "PNG" and not head.startswith(b"\x89PNG\r\n\x1a\n"):
         raise ContractError("PNG artifact has invalid magic: %s" % path)
+    if kind in {"JPEG", "JPG"}:
+        with path.open("rb") as handle:
+            if path.stat().st_size >= 2:
+                handle.seek(-2, os.SEEK_END)
+                tail = handle.read(2)
+            else:
+                tail = b""
+        if not (head.startswith(b"\xff\xd8\xff") and tail == b"\xff\xd9"):
+            raise ContractError("JPEG artifact has invalid magic: %s" % path)
     if kind == "GIF" and not (head.startswith(b"GIF87a") or head.startswith(b"GIF89a")):
         raise ContractError("GIF artifact has invalid magic: %s" % path)
     if kind == "MP4" and not (len(head) >= 12 and head[4:8] == b"ftyp"):
@@ -758,7 +801,13 @@ class HunyuanAdapter:
                     if primary.resolve() != recorded_primary.resolve():
                         raise ContractError("cached OBJ ZIP primary entrypoint changed")
                 else:
-                    _validate_magic(path, provider_type)
+                    if provider_type == "IMAGE":
+                        if handle.operation != "topology.reduce" or container_type not in {"PNG", "JPEG"}:
+                            raise ContractError("cached provider IMAGE has an unsupported operation or container type")
+                        allowed_suffixes = {".png"} if container_type == "PNG" else {".jpg", ".jpeg"}
+                        if path.suffix.lower() not in allowed_suffixes:
+                            raise ContractError("cached provider IMAGE has the wrong file extension: %s" % path)
+                    _validate_magic(path, container_type)
                     if provider_type == "OBJ":
                         _validate_obj_closure(path, path.parent)
             if not manifest.get("files"):
@@ -788,14 +837,26 @@ class HunyuanAdapter:
                     "provider returned unexpected artifact type %s for %s (expected %s)"
                     % (provider_type or "<empty>", handle.operation, ", ".join(spec.expected_types))
                 )
-            extension = _extension(provider_type, item["url"])
-            destination = output_dir / ("%02d-%s%s" % (index, spec.artifact_role, extension))
+            output_role = "preview_image" if provider_type == "IMAGE" else spec.artifact_role
+            extension = (
+                _image_staging_extension(item["url"])
+                if provider_type == "IMAGE"
+                else _extension(provider_type, item["url"])
+            )
+            destination = output_dir / ("%02d-%s%s" % (index, output_role, extension))
             fd, staged_name = tempfile.mkstemp(prefix=".download-", suffix=extension, dir=str(output_dir))
             os.close(fd)
             staged = Path(staged_name)
             bundle_stage: Optional[Path] = None
             try:
                 self.downloader.download(item["url"], staged)
+                container_type = provider_type
+                if provider_type == "IMAGE":
+                    if handle.operation != "topology.reduce":
+                        raise ContractError("provider IMAGE is supported only for topology.reduce")
+                    container_type = _image_container_type(staged, item["url"])
+                    extension = ".png" if container_type == "PNG" else ".jpg"
+                    destination = output_dir / ("%02d-%s%s" % (index, output_role, extension))
                 is_obj_zip = provider_type == "OBJ" and zipfile.is_zipfile(staged)
                 if is_obj_zip:
                     _verify_zip_crc(staged)
@@ -841,7 +902,7 @@ class HunyuanAdapter:
                         "preview_url": redact_url(item["preview_url"]) if item.get("preview_url") else None,
                     })
                     continue
-                _validate_magic(staged, provider_type)
+                _validate_magic(staged, container_type)
                 if provider_type == "OBJ":
                     _validate_obj_closure(staged, staged.parent)
                 os.replace(str(staged), str(destination))
@@ -851,10 +912,10 @@ class HunyuanAdapter:
                 if bundle_stage is not None and bundle_stage.exists():
                     shutil.rmtree(bundle_stage)
             manifest_files.append({
-                "role": spec.artifact_role,
+                "role": output_role,
                 "type": provider_type,
                 "provider_type": provider_type,
-                "container_type": provider_type,
+                "container_type": container_type,
                 "path": str(destination.relative_to(self.store.run_dir(handle_id))),
                 "sha256": sha256_file(destination),
                 "size_bytes": destination.stat().st_size,

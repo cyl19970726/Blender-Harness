@@ -51,6 +51,16 @@ class BytesDownloader:
         destination.write_bytes(self.payload)
 
 
+class MappingDownloader:
+    def __init__(self, payloads):
+        self.payloads = payloads
+        self.calls = []
+
+    def download(self, url, destination):
+        self.calls.append((url, destination))
+        destination.write_bytes(self.payloads[url])
+
+
 def zip_bytes(entries, compression=zipfile.ZIP_DEFLATED):
     output = io.BytesIO()
     with warnings.catch_warnings():
@@ -81,6 +91,16 @@ class HunyuanAdapterTest(unittest.TestCase):
                 "ResultFile3Ds": [{"Type": "OBJ", "Url": "https://cos.example/model.obj?token=private"}],
             }],
         })
+
+    def _topology_transport(self, files, suffix=""):
+        return FakeTransport({
+            "SubmitReduceFaceJob": [{"JobId": "job-reduce" + suffix}],
+            "DescribeReduceFaceJob": [{"Status": "DONE", "ResultFile3Ds": files}],
+        })
+
+    @staticmethod
+    def _topology_request():
+        return {"File3D": {"Url": "https://example/source.obj", "Type": "OBJ"}}
 
     def test_async_job_is_idempotent_resumable_and_downloaded(self):
         transport = FakeTransport({
@@ -328,6 +348,102 @@ class HunyuanAdapterTest(unittest.TestCase):
             self.assertEqual(artifact["container_type"], "OBJ")
             self.assertTrue(artifact["path"].endswith(".obj"))
             self.assertNotIn("unpacked_files", artifact)
+
+    def test_topology_reduce_accepts_image_obj_and_glb_result_set(self):
+        image_url = "https://cos.example/preview.png?token=private"
+        obj_url = "https://cos.example/reduced.obj"
+        glb_url = "https://cos.example/reduced.glb"
+        files = [
+            {"Type": "IMAGE", "Url": image_url},
+            {"Type": "OBJ", "Url": obj_url},
+            {"Type": "GLB", "Url": glb_url},
+        ]
+        payloads = {
+            image_url: b"\x89PNG\r\n\x1a\n" + b"synthetic-png",
+            obj_url: b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n",
+            glb_url: b"glTF" + b"\0" * 28,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            downloader = MappingDownloader(payloads)
+            adapter = HunyuanAdapter(
+                self._topology_transport(files), JobStore(Path(directory)), downloader
+            )
+            handle = adapter.submit("topology.reduce", self._topology_request(), "reduce-mixed-results")
+            adapter.poll_once(handle.handle_id)
+            manifest_path = adapter.fetch(handle.handle_id)
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(len(manifest["files"]), 3)
+            preview = manifest["files"][0]
+            self.assertEqual(preview["role"], "preview_image")
+            self.assertEqual(preview["provider_type"], "IMAGE")
+            self.assertEqual(preview["container_type"], "PNG")
+            self.assertTrue(preview["path"].endswith(".png"))
+            self.assertNotIn("token=", preview["source_url"])
+            self.assertEqual(adapter.fetch(handle.handle_id), manifest_path)
+
+            preview_path = Path(directory) / handle.handle_id / preview["path"]
+            preview_path.write_bytes(b"not-png")
+            preview["sha256"] = hashlib.sha256(b"not-png").hexdigest()
+            preview["size_bytes"] = len(b"not-png")
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "PNG artifact has invalid magic"):
+                adapter.fetch(handle.handle_id)
+
+    def test_topology_reduce_maps_suffixless_jpeg_to_real_container(self):
+        image_url = "https://cos.example/preview?token=private"
+        jpeg = b"\xff\xd8\xff\xe0synthetic-jpeg\xff\xd9"
+        files = [{"Type": "IMAGE", "Url": image_url}]
+        with tempfile.TemporaryDirectory() as directory:
+            adapter = HunyuanAdapter(
+                self._topology_transport(files, "-jpeg"),
+                JobStore(Path(directory)),
+                MappingDownloader({image_url: jpeg}),
+            )
+            handle = adapter.submit("topology.reduce", self._topology_request(), "reduce-jpeg")
+            adapter.poll_once(handle.handle_id)
+            manifest = json.loads(adapter.fetch(handle.handle_id).read_text(encoding="utf-8"))
+            preview = manifest["files"][0]
+            self.assertEqual(preview["provider_type"], "IMAGE")
+            self.assertEqual(preview["container_type"], "JPEG")
+            self.assertTrue(preview["path"].endswith(".jpg"))
+
+    def test_provider_image_is_scoped_and_fails_closed_on_suffix_or_magic(self):
+        png = b"\x89PNG\r\n\x1a\nsynthetic"
+        jpeg = b"\xff\xd8\xff\xe0synthetic\xff\xd9"
+        cases = {
+            "unsupported-suffix": ("https://cos.example/preview.webp", png),
+            "suffix-mismatch": ("https://cos.example/preview.png", jpeg),
+            "bad-magic": ("https://cos.example/preview.png", b"not-an-image"),
+        }
+        for name, (url, payload) in cases.items():
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as directory:
+                files = [{"Type": "IMAGE", "Url": url}]
+                adapter = HunyuanAdapter(
+                    self._topology_transport(files, "-" + name),
+                    JobStore(Path(directory)),
+                    MappingDownloader({url: payload}),
+                )
+                handle = adapter.submit("topology.reduce", self._topology_request(), "image-" + name)
+                adapter.poll_once(handle.handle_id)
+                with self.assertRaises(ContractError):
+                    adapter.fetch(handle.handle_id)
+
+        transport = FakeTransport({
+            "SubmitHunyuanTo3DProJob": [{"JobId": "job-image-wrong-operation"}],
+            "QueryHunyuanTo3DProJob": [{
+                "Status": "DONE",
+                "ResultFile3Ds": [{"Type": "IMAGE", "Url": "https://cos.example/preview.png"}],
+            }],
+        })
+        with tempfile.TemporaryDirectory() as directory:
+            downloader = MappingDownloader({"https://cos.example/preview.png": png})
+            adapter = HunyuanAdapter(transport, JobStore(Path(directory)), downloader)
+            handle = adapter.submit("geometry.pro", {"Prompt": "测试"}, "image-wrong-operation")
+            adapter.poll_once(handle.handle_id)
+            with self.assertRaisesRegex(ContractError, "unexpected artifact type IMAGE"):
+                adapter.fetch(handle.handle_id)
+            self.assertEqual(downloader.calls, [])
 
     def test_atomic_reservation_blocks_reentrant_duplicate_submit(self):
         class ReentrantTransport:

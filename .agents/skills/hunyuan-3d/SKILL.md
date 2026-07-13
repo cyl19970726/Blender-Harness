@@ -38,6 +38,7 @@ bh hunyuan fetch <handle-id>
 - URL 有效期有限，DONE 后应及时 fetch；manifest 不保存签名 query。
 - 已有 artifact manifest 时 fetch 复验本地哈希，不重复下载或悄悄覆盖。
 - `Type=OBJ` 可能实际下载为 OBJ/MTL/texture ZIP bundle；以 manifest 的 `provider_type`、`container_type`、`primary_entrypoint` 和 `unpacked_files` 为准，不按 URL 后缀猜容器，也不要手工把 ZIP 改名成 OBJ。
+- `topology.reduce` 的结果集合包含预览 `IMAGE` 与 OBJ/GLB；预览只能作为 `preview_image` 附件，不能被当作几何 candidate 或资产通过证据。
 
 ## 资产角色
 

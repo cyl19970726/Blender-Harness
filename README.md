@@ -76,6 +76,7 @@ bh route status .artifacts/routes/<route-group>
 - [ADR-0008](docs/adr/0008-harness-v1-clean-replacement.md)：为什么替换 case-heavy Harness v0
 - [旧 skills 迁移矩阵](docs/knowledge/LEGACY_SKILL_MIGRATION.md)：保留了什么、退役了什么
 - [真实失败 Casebook](docs/knowledge/AR_PRODUCTION_CASEBOOK.md)：历史证据与适用范围，不是自动 gate 库
+- [执行知识与证据保留](docs/knowledge/EXECUTION_KNOWLEDGE.md)：run、决策链、durable case 与 validator 的分层，以及当前本地证据归档边界
 
 ## 验证
 
