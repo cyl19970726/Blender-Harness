@@ -279,10 +279,20 @@ class QuicklookRunner:
                 raise ContractError(timeout_message) from exc
             (logs / "stdout.log").write_text(_text(process.stdout), encoding="utf-8")
             (logs / "stderr.log").write_text(_text(process.stderr), encoding="utf-8")
+            failure_exit_code = process.returncode
             duration_ms = int((time.monotonic() - start_time) * 1000)
-            report = read_json(staging / "quicklook-report.raw.json")
-            if process.returncode != 0 or report.get("status") != "succeeded":
-                raise ContractError("Blender quicklook failed: %s" % (report.get("error") or process.stderr.strip()))
+            report_path = staging / "quicklook-report.raw.json"
+            report = read_json(report_path) if report_path.is_file() else {}
+            process_error = process.stderr.strip() or process.stdout.strip() or "no Blender diagnostics"
+            if process.returncode != 0:
+                raise ContractError(
+                    "Blender quicklook exited %d before completion: %s"
+                    % (process.returncode, report.get("error") or process_error)
+                )
+            if not report:
+                raise ContractError("Blender quicklook produced no report: %s" % process_error)
+            if report.get("status") != "succeeded":
+                raise ContractError("Blender quicklook failed: %s" % (report.get("error") or process_error))
             files: List[ArtifactFile] = []
             for name in REQUIRED_VIEWS:
                 path = staging / "views" / (name + ".png")

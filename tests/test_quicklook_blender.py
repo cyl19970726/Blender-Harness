@@ -140,6 +140,32 @@ class QuicklookHostTest(unittest.TestCase):
             record = json.loads((failed[0] / "run-record.v1.json").read_text(encoding="utf-8"))
             self.assertEqual(record["exit_code"], 124)
 
+    def test_process_failure_without_report_preserves_real_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fake_blender = root / "fake_blender.py"
+            fake_blender.write_text(textwrap.dedent("""
+                #!/usr/bin/env python3
+                import sys
+
+                if "--version" in sys.argv:
+                    print("Blender 4.0.2-fake")
+                    raise SystemExit(0)
+                print("addon startup failed", file=sys.stderr)
+                raise SystemExit(7)
+            """).lstrip(), encoding="utf-8")
+            fake_blender.chmod(0o755)
+            source = root / "input.glb"
+            source.write_bytes(minimal_glb())
+            output = root / "runs"
+            with self.assertRaisesRegex(ContractError, "exited 7.*addon startup failed"):
+                QuicklookRunner(str(fake_blender)).run(source, output, "startup evidence")
+            failed = list(output.glob("*.failed-*"))
+            self.assertEqual(len(failed), 1)
+            self.assertIn("addon startup failed", (failed[0] / "logs" / "stderr.log").read_text(encoding="utf-8"))
+            record = json.loads((failed[0] / "run-record.v1.json").read_text(encoding="utf-8"))
+            self.assertEqual(record["exit_code"], 7)
+
 
 @unittest.skipUnless(os.environ.get("RUN_BLENDER_TESTS") == "1", "set RUN_BLENDER_TESTS=1 for real Blender integration")
 class BlenderQuicklookTest(unittest.TestCase):
