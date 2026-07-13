@@ -98,6 +98,8 @@
 - **scope limit**: 不推出 OBJ 总是优于 GLB；GLB 仍适合自包含预览与 runtime。也不推出“90% quads”自动等于 deformation-ready edge flow。
 - **retirement condition**: provider 开始返回可保留 quad metadata 的新格式，或官方输出合同改变时重验。
 
+同一输入的 `FaceLevel=high` 后续对照还发现 provider OBJ 不保持统一单位尺度：low 高度为 `1.0`，high 约为 `1.898438`。对比板必须先记录原始 bounds，再在 derivative 中按高度归一化并使用相同相机；不能把 provider 的 scale drift 误写成角色比例变化。high OBJ 为 6,994 vertices、7,421 faces（6,562 quads / 859 tris），8 boundary / 1 multi-face 均落在头部区域。拓扑 reviewer 认为它足以提出一次 body-only A/B；公平归一化的 FBX visual review 则显示权威 source 在脸、肩臂、腹胯与线流上仍更好。Director 因没有净资产收益而停止 body-cage 投入，完整头手也明确不通过。
+
 ## HY-006 · Provider 逻辑类型与真实容器/附件不一致
 
 - **date**: 2026-07-13
