@@ -21,13 +21,14 @@ jobs:
       - run: python -m compileall -q src tests
 
   blender-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: sudo apt-get update && sudo apt-get install -y blender
+      - run: blender --version
       - run: python -m pip install -e .
       - run: bh doctor --blender /usr/bin/blender
       - run: RUN_BLENDER_TESTS=1 BLENDER_BIN=/usr/bin/blender python -m unittest tests.test_quicklook_blender.BlenderQuicklookTest -v

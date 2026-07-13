@@ -42,18 +42,24 @@ def import_asset(path):
     if suffix == ".blend":
         bpy.ops.wm.open_mainfile(filepath=str(path))
     else:
-        bpy.ops.wm.read_factory_settings(use_empty=True)
+        # The host starts Blender with --factory-startup and explicitly enables
+        # import add-ons. Calling read_factory_settings here disables those
+        # add-ons on Blender 4.0 system packages, so clear objects instead.
+        bpy.ops.object.select_all(action="SELECT")
+        bpy.ops.object.delete(use_global=False)
         if suffix in {".glb", ".gltf"}:
-            bpy.ops.import_scene.gltf(filepath=str(path))
+            result = bpy.ops.import_scene.gltf(filepath=str(path))
         elif suffix == ".fbx":
-            bpy.ops.import_scene.fbx(filepath=str(path))
+            result = bpy.ops.import_scene.fbx(filepath=str(path))
         elif suffix == ".obj":
             if hasattr(bpy.ops.wm, "obj_import"):
-                bpy.ops.wm.obj_import(filepath=str(path))
+                result = bpy.ops.wm.obj_import(filepath=str(path))
             else:
-                bpy.ops.import_scene.obj(filepath=str(path))
+                result = bpy.ops.import_scene.obj(filepath=str(path))
         else:
             raise RuntimeError("unsupported quicklook input: %s" % suffix)
+        if set(result) != {"FINISHED"}:
+            raise RuntimeError("asset import did not finish: %s" % sorted(result))
 
 
 def visible_geometry(subject_mode):

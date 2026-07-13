@@ -161,9 +161,11 @@ class BlenderQuicklookTest(unittest.TestCase):
                 bpy.context.object.name = "BODY"
                 bpy.ops.mesh.primitive_cone_add(vertices=5, radius1=.35, depth=1.4, location=(1.2, 0, .4))
                 bpy.context.object.name = "DIRECTION_MARKER"
-                bpy.ops.export_scene.gltf(filepath=r'%s', export_format='GLB')
+                result = bpy.ops.export_scene.gltf(filepath=r'%s', export_format='GLB')
+                if set(result) != {'FINISHED'}:
+                    raise RuntimeError('glTF export did not finish: %%s' %% sorted(result))
             """ % str(source).replace("\\", "\\\\")), encoding="utf-8")
-            subprocess.run(
+            fixture_process = subprocess.run(
                 [
                     blender,
                     "-b",
@@ -175,9 +177,15 @@ class BlenderQuicklookTest(unittest.TestCase):
                     "--python",
                     str(builder),
                 ],
-                check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
+                text=True,
+            )
+            self.assertEqual(
+                fixture_process.returncode,
+                0,
+                "fixture Blender failed\nstdout:\n%s\nstderr:\n%s"
+                % (fixture_process.stdout, fixture_process.stderr),
             )
             self.assertTrue(source.is_file(), "Blender fixture export did not create a GLB")
             output = root / "runs"
