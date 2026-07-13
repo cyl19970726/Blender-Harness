@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieyanggucheng.local/schemas/route-decision.v2.schema.json",
+  "type": "object",
+  "required": ["schema", "decision_id", "route_revision_id", "probe_id", "verdict", "reason", "review_refs", "premise_broken", "decided_by", "decision_role"],
+  "properties": {
+    "schema": {"const": "blender-harness.route-decision.v2"},
+    "decision_id": {"type": "string", "minLength": 1},
+    "route_revision_id": {"type": "string", "minLength": 1},
+    "probe_id": {"type": "string", "minLength": 1},
+    "verdict": {"enum": ["continue", "revise", "abandon", "ask_owner"]},
+    "reason": {"type": "string", "minLength": 1},
+    "review_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "premise_broken": {"type": "boolean"},
+    "decided_by": {"type": "string", "minLength": 1},
+    "decision_role": {"type": "string", "minLength": 1},
+    "next_hypothesis": {"type": ["string", "null"]},
+    "created_at": {"type": "string"}
+  },
+  "additionalProperties": false
+}

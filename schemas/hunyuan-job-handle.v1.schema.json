@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://jieyanggucheng.local/schemas/hunyuan-job-handle.v1.schema.json",
+  "title": "Blender Harness Hunyuan JobHandle v1",
+  "type": "object",
+  "required": ["schema", "handle_id", "provider", "operation", "submit_action", "request_hash", "idempotency_key", "provider_status", "artifact_status", "submission_status", "submitted_at", "updated_at", "artifact_deadline"],
+  "properties": {
+    "schema": {"const": "blender-harness.hunyuan-job-handle.v1"},
+    "handle_id": {"type": "string", "pattern": "^[a-f0-9]{24}$"},
+    "provider": {"const": "hunyuan"},
+    "operation": {"type": "string", "minLength": 1},
+    "submit_action": {"type": "string", "minLength": 1},
+    "status_action": {"type": ["string", "null"]},
+    "job_id": {"type": ["string", "null"]},
+    "request_id": {"type": ["string", "null"]},
+    "request_hash": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "idempotency_key": {"type": "string", "minLength": 1},
+    "status": {"enum": ["WAIT", "RUN", "DONE", "FAIL", "UNKNOWN"]},
+    "provider_status": {"enum": ["WAIT", "RUN", "DONE", "FAIL", "UNKNOWN"]},
+    "artifact_status": {"enum": ["NOT_READY", "PENDING", "FETCHING", "FETCH_FAILED", "VERIFIED"]},
+    "submission_status": {"enum": ["RESERVED", "SUBMITTING", "SUBMIT_UNKNOWN", "SUBMIT_FAILED", "SUBMITTED"]},
+    "artifact_error": {"type": ["string", "null"]},
+    "submission_error": {"type": ["string", "null"]},
+    "submitted_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "artifact_deadline": {"type": "string", "format": "date-time"},
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "last_response": {"type": "object"}
+  },
+  "additionalProperties": true
+}

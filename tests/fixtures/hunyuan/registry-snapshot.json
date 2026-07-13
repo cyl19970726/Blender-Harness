@@ -1,0 +1,18 @@
+{
+  "apiVersion": "2025-05-13",
+  "capturedFrom": "https://cloud.tencent.com/document/product/1804/120838",
+  "officialSnapshotAt": "2026-07-13",
+  "operations": {
+    "format.convert": ["Convert3DFormat"],
+    "geometry.pro": ["SubmitHunyuanTo3DProJob", "QueryHunyuanTo3DProJob"],
+    "geometry.rapid": ["SubmitHunyuanTo3DRapidJob", "QueryHunyuanTo3DRapidJob"],
+    "motion.text": ["SubmitHunyuanTo3DMotionJob", "DescribeHunyuanTo3DMotionJob"],
+    "parts.generate": ["SubmitHunyuan3DPartJob", "QueryHunyuan3DPartJob"],
+    "profile.generate": ["SubmitProfileTo3DJob", "DescribeProfileTo3DJob"],
+    "rig.auto": ["SubmitAutoRiggingJob", "DescribeAutoRiggingJob"],
+    "texture.generate": ["SubmitTextureTo3DJob", "DescribeTextureTo3DJob"],
+    "topology.reduce": ["SubmitReduceFaceJob", "DescribeReduceFaceJob"],
+    "uv.unwrap": ["SubmitHunyuanTo3DUVJob", "DescribeHunyuanTo3DUVJob"]
+  },
+  "schema": "blender-harness.hunyuan-registry-snapshot.v1"
+}

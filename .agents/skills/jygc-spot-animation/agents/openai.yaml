@@ -1,4 +1,4 @@
 interface:
   display_name: "JYGC Spot Animation"
-  short_description: "Real-scene scenic AR animation (L2 spot contract) judgment and invariants"
-  default_prompt: "Use $jygc-spot-animation to judge Jieyang Gucheng real-scene scenic AR animation (L2 spot contract): scan-the-building triggers, effect plates, registration, tournament selection, and per-spot red lines."
+  short_description: "Scenic AR camera, registration, routes, and probes"
+  default_prompt: "Use $jygc-spot-animation to choose a scenic AR overlay route and probe camera registration, compositing, and content risks."

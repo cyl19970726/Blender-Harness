@@ -1,4 +1,4 @@
 interface:
   display_name: "JYGC Magnet Animation"
-  short_description: "Fridge-magnet/stamp-card animation (L3 card contract) judgment and invariants"
-  default_prompt: "Use $jygc-magnet-animation to judge Jieyang Gucheng fridge-magnet/stamp-card animation candidates (L3 card contract) against the phase gates and Gate D invariants."
+  short_description: "AR magnet product contract, route options, and probes"
+  default_prompt: "Use $jygc-magnet-animation to define the magnet target, compare production routes, and select evidence probes for the current visual risk."

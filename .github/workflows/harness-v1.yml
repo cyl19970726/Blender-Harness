@@ -1,0 +1,32 @@
+name: harness-v1
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install -e .
+      - run: python -m unittest discover -s tests -v
+      - run: bh hunyuan capabilities > /tmp/hunyuan-capabilities.json
+      - run: python -m compileall -q src tests
+
+  blender-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: sudo apt-get update && sudo apt-get install -y blender
+      - run: python -m pip install -e .
+      - run: RUN_BLENDER_TESTS=1 BLENDER_BIN=/usr/bin/blender python -m unittest tests.test_quicklook_blender.BlenderQuicklookTest -v

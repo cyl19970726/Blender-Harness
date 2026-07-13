@@ -1,0 +1,37 @@
+{
+  "capturedFrom": {
+    "format.convert": "https://cloud.tencent.com/document/product/1804/126300",
+    "parts.generate": "https://cloud.tencent.com/document/product/1804/126295",
+    "uv.unwrap": "https://cloud.tencent.com/document/api/1804/126294"
+  },
+  "contracts": {
+    "format.convert": {
+      "request": {
+        "File3D": "https://example.invalid/source.glb",
+        "Format": "FBX"
+      },
+      "response": {
+        "RequestId": "fixture-convert-request",
+        "ResultFile3D": "https://cos.example.invalid/converted.fbx?fixture-secret=removed"
+      }
+    },
+    "parts.generate": {
+      "request": {
+        "File": {
+          "Type": "FBX",
+          "Url": "https://example.invalid/source.fbx"
+        }
+      }
+    },
+    "uv.unwrap": {
+      "request": {
+        "File": {
+          "Type": "GLB",
+          "Url": "https://example.invalid/source.glb"
+        }
+      }
+    }
+  },
+  "schema": "blender-harness.hunyuan-official-contracts-p0.v1",
+  "snapshotAt": "2026-07-13"
+}
