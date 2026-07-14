@@ -190,7 +190,7 @@ class RouteWorkspace:
                 raise ContractError("terminal probe requires real evidence files, including cancellation/failure logs")
             provided_names = {Path(item.path).name for item in items}
             missing_expected = sorted(set(probe.expected_evidence).difference(provided_names))
-            if missing_expected:
+            if execution_status == "succeeded" and missing_expected:
                 raise ContractError("probe evidence is missing expected files: %s" % ", ".join(missing_expected))
             evidence_id = "evidence-" + sha256_json({
                 "probe_id": probe.probe_id,
@@ -211,6 +211,7 @@ class RouteWorkspace:
             probe.finding = finding
             probe.confidence = confidence
             probe.evidence_bundle_id = evidence_id
+            probe.missing_expected_evidence = missing_expected
             probe.result_summary = result_summary
             probe.updated_at = utc_now()
             write_json_atomic(self.probes_dir / (probe.probe_id + ".json"), probe.to_dict())

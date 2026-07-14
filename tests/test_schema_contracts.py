@@ -4,6 +4,7 @@ from dataclasses import fields
 from pathlib import Path
 
 from blender_harness.adapters.providers.hunyuan.adapter import JobHandle
+from blender_harness.adapters.providers.tripo.adapter import JobHandle as TripoJobHandle
 from blender_harness.contracts import EvidenceBundle, ProbeRun, ReviewRecord, RouteDecision, RouteHypothesis
 
 
@@ -19,6 +20,7 @@ class SchemaContractTest(unittest.TestCase):
             "review-record.v1.schema.json": ReviewRecord,
             "route-decision.v2.schema.json": RouteDecision,
             "hunyuan-job-handle.v1.schema.json": JobHandle,
+            "tripo-job-handle.v1.schema.json": TripoJobHandle,
         }
         for filename, contract in contracts.items():
             with self.subTest(schema=filename):

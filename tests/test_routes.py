@@ -42,6 +42,59 @@ def create_finished_probe(workspace, root, finding="refutes", producer="worker")
 
 
 class RouteWorkspaceTest(unittest.TestCase):
+    def test_successful_probe_cannot_omit_expected_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = RouteWorkspace(root)
+            workspace.initialize(hypothesis())
+            workspace.create_probe(ProbeRun(
+                probe_id="strict-success-probe",
+                route_revision_id="jiexiaoxian-body-r1",
+                question="did the render complete?",
+                method="render once",
+                expected_evidence=["render.png"],
+                budget={"seconds": 30},
+                producer_actor_id="worker",
+            ))
+            log = root / "stdout.log"
+            log.write_text("render stopped before output\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContractError, "missing expected files: render.png"):
+                workspace.finish_probe(
+                    "strict-success-probe", "succeeded", "refutes", 0.8, [log], "render missing"
+                )
+
+    def test_canceled_probe_preserves_logs_and_records_missing_success_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            workspace = RouteWorkspace(root)
+            workspace.initialize(hypothesis())
+            workspace.create_probe(ProbeRun(
+                probe_id="stopped-probe",
+                route_revision_id="jiexiaoxian-body-r1",
+                question="does the cheap preflight authorize Blender?",
+                method="stop before Blender when the preflight refutes the premise",
+                expected_evidence=["preflight.json", "workcopy.blend", "pose.png"],
+                budget={"seconds": 30},
+                producer_actor_id="worker",
+            ))
+            preflight = root / "preflight.json"
+            preflight.write_text('{"authorized": false}\n', encoding="utf-8")
+            log = root / "stdout.log"
+            log.write_text("stopped before Blender\n", encoding="utf-8")
+            workspace.finish_probe(
+                "stopped-probe",
+                "canceled",
+                "inconclusive",
+                0.0,
+                [preflight, log],
+                "the combined probe was over-scoped; split preflight from Blender execution",
+            )
+            probe = workspace.load_probe("stopped-probe")
+            self.assertEqual(probe.execution_status, "canceled")
+            self.assertEqual(probe.finding, "inconclusive")
+            self.assertEqual(probe.missing_expected_evidence, ["pose.png", "workcopy.blend"])
+            self.assertIsNotNone(probe.evidence_bundle_id)
+
     def test_refuting_probe_is_successful_execution_and_evidence_is_immutable(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

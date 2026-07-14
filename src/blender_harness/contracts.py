@@ -154,6 +154,7 @@ class ProbeRun:
     expected_evidence: List[str]
     budget: Dict[str, Any]
     producer_actor_id: str
+    missing_expected_evidence: List[str] = field(default_factory=list)
     execution_status: str = "planned"
     finding: Optional[str] = None
     confidence: Optional[float] = None
@@ -168,6 +169,11 @@ class ProbeRun:
         if not all([self.probe_id, self.route_revision_id, self.question, self.method, self.producer_actor_id]):
             raise ContractError("probe identity, question, method and producer are required")
         ensure_non_empty_strings(self.expected_evidence, "expected_evidence")
+        ensure_non_empty_strings(
+            self.missing_expected_evidence,
+            "missing_expected_evidence",
+            allow_empty=True,
+        )
         if self.execution_status not in PROBE_EXECUTION_STATUSES:
             raise ContractError("unknown probe execution status: %s" % self.execution_status)
         if self.finding is not None and self.finding not in PROBE_FINDINGS:

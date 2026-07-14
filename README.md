@@ -13,10 +13,13 @@ Blender 长程任务真正昂贵的失败，不是某一步报错，而是路线
 | Route / Probe / Evidence / Review / Decision | 已实现合同、不可变记录和单元测试 | 不代表 Agent 的艺术判断一定正确 |
 | Blender Quicklook | 已实现真实 headless Blender 多视图、日志、哈希与缓存复验 | 不是 PBR lookdev、动画验收或资产批准 |
 | Hunyuan Adapter | 已覆盖 API snapshot `2025-05-13` 的 10 类能力 / 19 Actions；有 recorded/synthetic tests | CI 无腾讯凭证，不代表 19 Actions 全部 live verified |
+| Tripo Adapter | 已建立 v3 registry、Keychain/env 凭证、可恢复 JobHandle；首个 enabled 纵切为多视图低模 | 其余官方 operation 仍是 `official_only`，不代表已经 live verified |
 | 揭小贤里程碑 | 路线与验收意图已定义 | 素体、绑定、服装、动作和最终镜头尚未制作完成 |
 | 发布与生产管理 | 尚未实现 | 没有渲染农场、资产审批系统、成本账本、SLA 或自动发布 |
 
 所以，对“基础设施是否做好”的准确回答是：**用于开始真实小探针的 v1 基础层已经成立；用于交付最终动画的生产基础设施还没有做完。** 接下来必须用真实揭小贤资产跑纵切，新的未知会继续改变实现。
+
+一个 probe 的 `expected_evidence` 只列该实验成功执行时无条件会产生的文件。像“preflight 通过才进入 Blender”这样的条件阶段要拆成下一个 probe；失败/取消会保存日志和缺失清单，不用伪造产物把 gate 填绿。
 
 ## 工作方式
 
@@ -72,6 +75,8 @@ bh route status .artifacts/routes/<route-group>
 - [Harness 架构](docs/architecture/HARNESS_V1.md)：控制面、执行面、证据面与 multi-agent 边界
 - [揭小贤抛金元宝里程碑](docs/milestones/JIEXIAOXIAN_INGOT_TOSS.md)：当前真实验收目标
 - [Hunyuan Adapter](docs/integrations/HUNYUAN.md)：10 类能力 / 19 Actions、JobHandle 与验证等级
+- [Tripo v3 Adapter](docs/integrations/TRIPO.md)：安全凭证、多视图 P1、短期 URL、恢复与成熟度边界
+- [揭小贤 canonical entity](docs/milestones/JIEXIAOXIAN_CANONICAL_ENTITY.md)：长期可复用素体、组件和 LOD 接口
 - [资产目录边界](docs/architecture/ASSET_LAYOUT.md)：权威源、作业区和发布资产的物理边界
 - [ADR-0008](docs/adr/0008-harness-v1-clean-replacement.md)：为什么替换 case-heavy Harness v0
 - [旧 skills 迁移矩阵](docs/knowledge/LEGACY_SKILL_MIGRATION.md)：保留了什么、退役了什么

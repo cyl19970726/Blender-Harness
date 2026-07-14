@@ -26,6 +26,7 @@ related:
 | 音频权威源 | `_assets-src/audio/<spot-or-sku>/` + `PROVENANCE.md` | 记录声线、工程、采样/音乐授权和派生链 |
 | Harness 作业与失败尝试 | `.artifacts/blender-harness-v1/` | gitignored；保存 run、日志、证据和失败 attempt，不是发布目录 |
 | Hunyuan 作业 | `.artifacts/hunyuan/jobs/` | JobHandle、脱敏响应、私有短期 URL、下载产物和 SHA256；不是发布目录 |
+| Tripo 作业 | `.artifacts/tripo/jobs/` | JobHandle、input SHA、`0600` token/短期 URL、fetch attempts、下载产物和 SHA256；不是发布目录 |
 | 路线工作区 | `.artifacts/routes/<route-group>/` | revision DAG、probe、evidence、review、decision 和 knowledge proposal |
 | 小程序包内轻量 runtime 资产 | `wechat-*/miniprogram/**/assets/` | 更新前评估包体并登记 manifest；不要把大工作文件复制进包 |
 | 大型发布媒体 | CloudBase / CDN / 其他已批准对象存储 | manifest 记录稳定 URL、SHA256、size、来源和回滚版本 |

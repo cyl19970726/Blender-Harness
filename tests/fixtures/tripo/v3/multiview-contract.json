@@ -1,0 +1,46 @@
+{
+  "schema": "blender-harness.tripo-official-contract-fixture.v1",
+  "recorded_at": "2026-07-13",
+  "source": "official_documentation",
+  "api_version": "v3",
+  "model_version": "P1-20260311",
+  "redactions": [
+    "file tokens replaced with fixture tokens",
+    "task id replaced with fixture task id",
+    "result URL query removed"
+  ],
+  "retirement_condition": "Replace or revise after a contradictory live v3 response or official endpoint/model contract change.",
+  "request": {
+    "inputs": [
+      "fixture-front-token",
+      "fixture-left-token",
+      "fixture-back-token",
+      "fixture-right-token"
+    ],
+    "model": "P1-20260311",
+    "model_seed": 20260713,
+    "face_limit": 10000,
+    "texture": false,
+    "pbr": false
+  },
+  "submit_response": {
+    "code": 0,
+    "data": {
+      "task_id": "task_fixture_multiview"
+    }
+  },
+  "success_response": {
+    "code": 0,
+    "data": {
+      "task_id": "task_fixture_multiview",
+      "type": "multiview_to_model",
+      "status": "success",
+      "progress": 100,
+      "credits_consumed": 40,
+      "output": {
+        "model_url": "https://cdn.example/model.glb",
+        "rendered_image_url": "https://cdn.example/preview.png"
+      }
+    }
+  }
+}

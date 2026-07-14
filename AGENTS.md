@@ -13,7 +13,7 @@
 ## Before changing anything
 
 1. 先读 `README.md` 和 `docs/architecture/HARNESS_V1.md`。
-2. 若任务属于已有领域，必须读对应 `.agents/skills/<skill>/SKILL.md`；混元任务同时读 `docs/integrations/HUNYUAN.md`，揭小贤任务读当前 milestone。
+2. 若任务属于已有领域，必须读对应 `.agents/skills/<skill>/SKILL.md`；混元任务同时读 `docs/integrations/HUNYUAN.md`，Tripo 任务读 `docs/integrations/TRIPO.md`，揭小贤素体任务再读 canonical entity 与当前 milestone。
 3. 检查 `git status --short --branch`，保留用户和其他 Agent 的无关改动。
 4. 明确当前目标画面、最危险的路线假设、未知项、停止条件，以及能最快证伪它的 probe。
 5. 只有结构稳定、跨任务成立的事实才进入程序 validator；审美 case 和一次性失败留在评审或 casebook。
@@ -75,6 +75,7 @@ Target Brief
 - Quicklook v1 只接收自包含 GLB；默认 `single_object`，多对象必须显式 `whole_scene`。缓存命中仍需复验 manifest、文件与 SHA256。
 - `.artifacts/` 是 gitignored 的作业与证据区，不是发布目录；`/tmp`、聊天附件和短期签名 URL 不能成为权威源。
 - Hunyuan provider `DONE` 永不等于 Blender 资产通过。AutoRig 只产生 draft；motion 输出是 source skeleton，必须保留 Blender retarget/bake。
+- Tripo `success` 永不等于 Blender 资产通过。只有 operation 标记 `submit_enabled` 才能 live submit；`official_only` registry 不能冒充支持。
 - Hunyuan snapshot `2025-05-13` 的 required set 是 10 类能力 / 19 Actions；未来官方新增 Action 可以扩展，不能写“永远只能 19 个”的 gate。
 - `SUBMIT_UNKNOWN` 不自动重试；先人工 reconcile，避免重复计费与幽灵任务。
 - 不恢复旧 `tools/blender-harness`、固定 Phase/Profile、`gate-status.json`、golden-negative automation 或 case-heavy 总闸。

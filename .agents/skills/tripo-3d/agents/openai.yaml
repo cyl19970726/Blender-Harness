@@ -1,0 +1,4 @@
+interface:
+  display_name: "Tripo 3D Adapter"
+  short_description: "Tripo v3 generation, retopo, rig and animation adapter"
+  default_prompt: "Use $tripo-3d to run a recoverable Tripo v3 Blender Harness probe."

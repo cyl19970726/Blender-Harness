@@ -8,6 +8,8 @@
 
 ## Workstream A：可复用素体
 
+素体的长期实体合同见 [JIEXIAOXIAN_CANONICAL_ENTITY.md](JIEXIAOXIAN_CANONICAL_ENTITY.md)。供应商候选必须证明自己适合作为 canonical high source 或 production cage 的来源，而不是只证明某张静态图能生成 GLB。
+
 首个路线假设可以是“多视图生成保留头脸身份，身体经局部重拓扑后可作为素体”，但必须先用低成本探针证伪：
 
 1. 生成或手工建立 A/T Pose 无衣素体候选；

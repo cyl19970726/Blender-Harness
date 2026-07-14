@@ -34,6 +34,19 @@ def _hunyuan_adapter(args: argparse.Namespace) -> HunyuanAdapter:
     return HunyuanAdapter(transport, JobStore(Path(args.jobs_dir)))
 
 
+def _tripo_adapter(args: argparse.Namespace):
+    from .adapters.providers.tripo import (
+        Credentials as TripoCredentials,
+        JobStore as TripoJobStore,
+        TripoAdapter,
+        TripoTransport,
+    )
+
+    credentials = TripoCredentials.load(args.keychain_service, args.keychain_account)
+    transport = TripoTransport(credentials)
+    return TripoAdapter(transport, TripoJobStore(Path(args.jobs_dir)))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="bh", description="Blender Harness v1")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -179,6 +192,28 @@ def build_parser() -> argparse.ArgumentParser:
     hy_poll.add_argument("handle_id")
     hy_fetch = hy_sub.add_parser("fetch")
     hy_fetch.add_argument("handle_id")
+
+    tripo = sub.add_parser("tripo", help="Tripo v3 provider adapter")
+    tripo.add_argument("--jobs-dir", default=".artifacts/tripo/jobs")
+    tripo.add_argument("--keychain-service", default="blender-harness.tripo")
+    tripo.add_argument("--keychain-account")
+    tripo_sub = tripo.add_subparsers(dest="tripo_command", required=True)
+    tripo_sub.add_parser("capabilities")
+    tripo_sub.add_parser("credential-status")
+    tripo_submit = tripo_sub.add_parser("submit")
+    tripo_submit.add_argument("--operation", required=True)
+    tripo_submit.add_argument("--request", required=True)
+    tripo_submit.add_argument("--idempotency-key", required=True)
+    tripo_poll = tripo_sub.add_parser("poll")
+    tripo_poll.add_argument("handle_id")
+    tripo_fetch = tripo_sub.add_parser("fetch")
+    tripo_fetch.add_argument("handle_id")
+    tripo_reconcile = tripo_sub.add_parser("reconcile")
+    tripo_reconcile.add_argument("handle_id")
+    tripo_reconcile.add_argument("--reason", required=True)
+    tripo_reconcile.add_argument("--task-id")
+    tripo_reconcile.add_argument("--trace-id")
+    tripo_reconcile.add_argument("--confirmed-not-created", action="store_true")
     return parser
 
 
@@ -321,6 +356,45 @@ def run(args: argparse.Namespace) -> int:
                 _json(adapter.poll_once(args.handle_id).to_dict())
             else:
                 _json({"manifest": str(adapter.fetch(args.handle_id))})
+    elif args.command == "tripo":
+        if args.tripo_command == "capabilities":
+            from .adapters.providers.tripo.operations import OPERATIONS
+
+            _json({
+                "provider": "tripo",
+                "api_version": "v3",
+                "operation_count": len(OPERATIONS),
+                "provider_done_is_asset_approval": False,
+                "operations": [value.to_dict() for value in OPERATIONS.values()],
+            })
+        elif args.tripo_command == "credential-status":
+            from .adapters.providers.tripo import Credentials as TripoCredentials
+
+            credentials = TripoCredentials.load(args.keychain_service, args.keychain_account)
+            _json({
+                "provider": "tripo",
+                "available": True,
+                "source": credentials.source,
+                "fingerprint": credentials.fingerprint,
+                "keychain_service": args.keychain_service,
+            })
+        else:
+            adapter = _tripo_adapter(args)
+            if args.tripo_command == "submit":
+                handle = adapter.submit(args.operation, read_json(Path(args.request)), args.idempotency_key)
+                _json(handle.to_dict())
+            elif args.tripo_command == "poll":
+                _json(adapter.poll_once(args.handle_id).to_dict())
+            elif args.tripo_command == "fetch":
+                _json({"manifest": str(adapter.fetch(args.handle_id))})
+            else:
+                _json(adapter.reconcile(
+                    args.handle_id,
+                    reason=args.reason,
+                    task_id=args.task_id,
+                    trace_id=args.trace_id,
+                    confirmed_not_created=args.confirmed_not_created,
+                ).to_dict())
     return 0
 
 
