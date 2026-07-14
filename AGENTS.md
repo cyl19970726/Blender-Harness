@@ -59,6 +59,7 @@ Target Brief
 | 人类首次进入、成熟度与快速开始 | `README.md` |
 | Agent 工作规则 | 本文件 |
 | Harness 概念和角色边界 | `docs/architecture/HARNESS_V1.md` |
+| Learning 的范围、Recipe/Experience/Promotion 边界 | `docs/architecture/LEARNING_PLANE.md` |
 | 字段与序列化合同 | `schemas/*.schema.json` 与对应 dataclass |
 | CLI 真实参数 | `src/blender_harness/cli.py` 和 `bh ... --help` |
 | Hunyuan operation / Action | provider registry 与 `docs/integrations/HUNYUAN.md` |
@@ -81,6 +82,8 @@ Target Brief
 - 不恢复旧 `tools/blender-harness`、固定 Phase/Profile、`gate-status.json`、golden-negative automation 或 case-heavy 总闸。
 - 旧 case 可以建议 probe 或 review question；除非同时具备明确适用范围、退役条件、机械测试与正负 fixture，否则不能成为 validator。
 - 不把某个 skill 写成第二套状态机。稳定方法留在 skill，具体失败留在 casebook，运行状态只进 `.artifacts`。
+- Recipe promotion 只更新精确 scope 下的学习推荐，不批准 Blender 资产，也不替代 RouteDecision。
+- Learning 中 `unknown` 永不换算成 `0`；challenger 只能是不可发布 shadow，CapabilitySnapshot 变化后旧 recipe 必须 stale/disputed 并重跑 bounded canary。
 
 ## Change discipline
 

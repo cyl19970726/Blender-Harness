@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.outcome-vector.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome_id", "context_id", "observations", "assessed_by", "assessment_role", "evidence_refs", "created_at", "schema"],
+  "properties": {
+    "outcome_id": {"type": "string", "minLength": 1},
+    "context_id": {"type": "string", "minLength": 1},
+    "observations": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": true,
+        "required": ["metric_id", "status", "value", "direction", "kind", "evidence_refs"],
+        "properties": {
+          "metric_id": {"type": "string", "minLength": 1},
+          "status": {"enum": ["observed", "unknown", "not_applicable"]},
+          "value": {"type": ["number", "null"]},
+          "direction": {"enum": ["minimize", "maximize", "informational"]},
+          "kind": {"enum": ["quality", "mechanical", "cost", "time", "risk", "rework", "retention"]},
+          "evidence_refs": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "assessed_by": {"type": "string", "minLength": 1},
+    "assessment_role": {"type": "string", "minLength": 1},
+    "evidence_refs": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "created_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.outcome-vector.v1"}
+  }
+}

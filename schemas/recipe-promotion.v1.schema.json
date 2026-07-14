@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.recipe-promotion.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["promotion_id", "sequence", "scope_context_id", "scope_fingerprint", "action", "candidate_recipe_ref", "previous_champion_ref", "prospective_shadow_experience_ids", "comparison_refs", "review_refs", "reason", "decided_by", "decision_role", "rollback_target_ref", "created_at", "schema"],
+  "properties": {
+    "promotion_id": {"type": "string", "minLength": 1},
+    "sequence": {"type": "integer", "minimum": 1},
+    "scope_context_id": {"type": "string", "minLength": 1},
+    "scope_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "action": {"enum": ["promote", "rollback", "retire"]},
+    "candidate_recipe_ref": {"type": ["string", "null"]},
+    "previous_champion_ref": {"type": ["string", "null"]},
+    "prospective_shadow_experience_ids": {"type": "array", "items": {"type": "string"}},
+    "comparison_refs": {"type": "array", "items": {"type": "string"}},
+    "review_refs": {"type": "array", "items": {"type": "string"}},
+    "reason": {"type": "string", "minLength": 1},
+    "decided_by": {"type": "string", "minLength": 1},
+    "decision_role": {"enum": ["director", "owner"]},
+    "rollback_target_ref": {"type": ["string", "null"]},
+    "created_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.recipe-promotion.v1"}
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.freshness-assessment.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["assessment_id", "capability_key", "previous_snapshot_id", "current_snapshot_id", "status", "change_kinds", "affected_recipe_refs", "blocks_production", "reason", "assessed_by", "assessed_at", "schema"],
+  "properties": {
+    "assessment_id": {"type": "string", "minLength": 1},
+    "capability_key": {"type": "string", "minLength": 1},
+    "previous_snapshot_id": {"type": ["string", "null"]},
+    "current_snapshot_id": {"type": "string", "minLength": 1},
+    "status": {"enum": ["active", "stale", "disputed", "retired"]},
+    "change_kinds": {"type": "array", "items": {"type": "string"}},
+    "affected_recipe_refs": {"type": "array", "items": {"type": "string"}},
+    "blocks_production": {"type": "boolean"},
+    "reason": {"type": "string", "minLength": 1},
+    "assessed_by": {"type": "string", "minLength": 1},
+    "assessed_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.freshness-assessment.v1"}
+  }
+}

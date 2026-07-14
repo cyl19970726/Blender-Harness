@@ -214,6 +214,10 @@ def build_parser() -> argparse.ArgumentParser:
     tripo_reconcile.add_argument("--task-id")
     tripo_reconcile.add_argument("--trace-id")
     tripo_reconcile.add_argument("--confirmed-not-created", action="store_true")
+
+    from .learning_cli import register_learning_parser
+
+    register_learning_parser(sub)
     return parser
 
 
@@ -395,6 +399,10 @@ def run(args: argparse.Namespace) -> int:
                     trace_id=args.trace_id,
                     confirmed_not_created=args.confirmed_not_created,
                 ).to_dict())
+    elif args.command == "learn":
+        from .learning_cli import run_learning
+
+        _json(run_learning(args))
     return 0
 
 

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.recipe-recommendation.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recommendation_id", "context_id", "scope_fingerprint", "status", "champion_recipe_ref", "challenger", "comparison_refs", "freshness", "evidence_refs", "uncertainties", "counterexamples", "cheapest_next_falsifier", "generated_by", "generated_at", "schema"],
+  "properties": {
+    "recommendation_id": {"type": "string", "minLength": 1},
+    "context_id": {"type": "string", "minLength": 1},
+    "scope_fingerprint": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "status": {"enum": ["recommend", "needs_promotion", "needs_revalidation", "insufficient_evidence", "ask_owner"]},
+    "champion_recipe_ref": {"type": ["string", "null"]},
+    "challenger": {"type": ["object", "null"]},
+    "comparison_refs": {"type": "array", "items": {"type": "string"}},
+    "freshness": {"type": "object"},
+    "evidence_refs": {"type": "array", "items": {"type": "string"}},
+    "uncertainties": {"type": "array", "items": {"type": "string"}},
+    "counterexamples": {"type": "array", "items": {"type": "string"}},
+    "cheapest_next_falsifier": {"type": ["object", "null"]},
+    "generated_by": {"type": "string", "minLength": 1},
+    "generated_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.recipe-recommendation.v1"}
+  }
+}

@@ -14,6 +14,7 @@ Blender 长程任务真正昂贵的失败，不是某一步报错，而是路线
 | Blender Quicklook | 已实现真实 headless Blender 多视图、日志、哈希与缓存复验 | 不是 PBR lookdev、动画验收或资产批准 |
 | Hunyuan Adapter | 已覆盖 API snapshot `2025-05-13` 的 10 类能力 / 19 Actions；有 recorded/synthetic tests | CI 无腾讯凭证，不代表 19 Actions 全部 live verified |
 | Tripo Adapter | 已建立 v3 registry、Keychain/env 凭证、可恢复 JobHandle；首个 enabled 纵切为多视图低模 | 其余官方 operation 仍是 `official_only`，不代表已经 live verified |
+| Learning Plane | 已实现本机 scoped recipe、经验 ingest、公平比较、Pareto 推荐、promotion/freshness 合同 | 不是供应商排行榜、资产审批或跨机器永久记忆 |
 | 揭小贤里程碑 | 路线与验收意图已定义 | 素体、绑定、服装、动作和最终镜头尚未制作完成 |
 | 发布与生产管理 | 尚未实现 | 没有渲染农场、资产审批系统、成本账本、SLA 或自动发布 |
 
@@ -50,6 +51,7 @@ python -m pip install -e .
 
 bh --help
 bh hunyuan capabilities
+bh learn --help
 bh doctor --blender /opt/homebrew/bin/blender
 bh quicklook model.glb \
   --intent "检查素体轮廓和肩部" \
@@ -73,6 +75,7 @@ bh route status .artifacts/routes/<route-group>
 
 - [AGENTS.md](AGENTS.md)：Agent 在本仓库工作的操作合同
 - [Harness 架构](docs/architecture/HARNESS_V1.md)：控制面、执行面、证据面与 multi-agent 边界
+- [Learning Plane](docs/architecture/LEARNING_PLANE.md)：scoped recipe、Experience、Pareto、promotion 与 freshness 边界
 - [揭小贤抛金元宝里程碑](docs/milestones/JIEXIAOXIAN_INGOT_TOSS.md)：当前真实验收目标
 - [Hunyuan Adapter](docs/integrations/HUNYUAN.md)：10 类能力 / 19 Actions、JobHandle 与验证等级
 - [Tripo v3 Adapter](docs/integrations/TRIPO.md)：安全凭证、多视图 P1、短期 URL、恢复与成熟度边界
@@ -82,6 +85,7 @@ bh route status .artifacts/routes/<route-group>
 - [旧 skills 迁移矩阵](docs/knowledge/LEGACY_SKILL_MIGRATION.md)：保留了什么、退役了什么
 - [真实失败 Casebook](docs/knowledge/AR_PRODUCTION_CASEBOOK.md)：历史证据与适用范围，不是自动 gate 库
 - [执行知识与证据保留](docs/knowledge/EXECUTION_KNOWLEDGE.md)：run、决策链、durable case 与 validator 的分层，以及当前本地证据归档边界
+- [Hunyuan live 学习投影](docs/knowledge/HUNYUAN_LIVE_LEARNING_2026_07.md)：五次真实 submit 的参数、产物哈希、费用 unknown 与可比较范围
 
 ## 验证
 

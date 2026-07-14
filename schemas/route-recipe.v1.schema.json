@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.route-recipe.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recipe_id", "revision_id", "parent_revision_ids", "context_id", "input_contracts", "steps", "output_contracts", "stop_conditions", "fallback_recipe_refs", "cheapest_next_falsifier", "created_by", "created_at", "schema"],
+  "properties": {
+    "recipe_id": {"type": "string", "minLength": 1},
+    "revision_id": {"type": "string", "minLength": 1},
+    "parent_revision_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "context_id": {"type": "string", "minLength": 1},
+    "input_contracts": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "steps": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": true,
+        "required": ["step_id", "capability_snapshot_id", "operation", "depends_on_step_ids", "input_bindings", "output_bindings", "resolved_parameters", "parameter_sources", "budget_limit", "evidence_obligations"]
+      }
+    },
+    "output_contracts": {"type": "array", "minItems": 1, "items": {"type": "object"}},
+    "stop_conditions": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+    "fallback_recipe_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "cheapest_next_falsifier": {"type": "object", "required": ["question", "method"]},
+    "created_by": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.route-recipe.v1"}
+  }
+}

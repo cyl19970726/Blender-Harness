@@ -9,6 +9,7 @@ description: 揭阳古城 Blender 长程资产与动画任务的 adaptive harnes
 
 - `README.md`
 - `docs/architecture/HARNESS_V1.md`
+- 若任务涉及经验比较、recipe 推荐或 freshness，再读 `docs/architecture/LEARNING_PLANE.md`
 - 当前任务若是揭小贤里程碑，再读 `docs/milestones/JIEXIAOXIAN_INGOT_TOSS.md`
 - 若调用混元，再使用 `hunyuan-3d` skill 和 `docs/integrations/HUNYUAN.md`
 
@@ -23,6 +24,7 @@ description: 揭阳古城 Blender 长程资产与动画任务的 adaptive harnes
 5. Probe 必须先进入终态并留下证据，才能做 RouteDecision。
 6. 前提被击穿时禁止 `continue`；选择 `revise`、`abandon` 或 `ask_owner`。
 7. provider `DONE`、Blender exit 0、骨架存在、文件能打开都不等于资产 approved。
+8. Learning 只在精确 Context 内推荐 Recipe：unknown 不得补 0，challenger 只能做不可发布 shadow，snapshot 变化必须重验；promotion 不等于资产批准。
 
 ## 机器与 agent 的边界
 
@@ -54,6 +56,7 @@ bh probe finish ...
 bh route decide ...
 bh deviation add ...
 bh hunyuan capabilities
+bh learn --help
 ```
 
 Quicklook 是内环感知，不是视觉批准。正式判断应引用目标帧、必要的专项板和 run manifest。

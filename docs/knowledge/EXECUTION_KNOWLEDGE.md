@@ -13,6 +13,12 @@ Blender 长程任务中的路线发现是产品资产的一部分，但不同内
 
 一次发现可以逐层提升，但不能跳级。Provider `DONE`、一次视觉失败或某个作品的阈值，都不足以直接成为 validator。
 
+## Learning Plane 是投影，不是第五层真相
+
+`.artifacts/learning/v1/` 从上述证据链构造 Context、CapabilitySnapshot、Recipe、Experience、Comparison 和 append-only promotion/retirement event。它的用途是按精确 scope 找回可复现路线、暴露不可比项，并为下一次 shadow probe 推荐候选；源记录或哈希变化时应 fail closed，而不是复制出一份更方便但不可追溯的“真相”。
+
+Learning 记录不得嵌入 API key、Base64 图片、带签名 query 的短期 URL 或未脱敏供应商响应。旧 run 缺少实际费用、有效默认、人工工时或视觉指标时必须保存 `unknown`。跨机器 Evidence Pack 尚未完成，因此本机 promotion 可重建但不是团队级永久授权。
+
 ## 每条 durable case 的最小字段
 
 - `date` 与 provider/Blender/API 版本；

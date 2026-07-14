@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "blender-harness.context-contract.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["context_id", "target_brief_ref", "target_brief_sha256", "asset_family", "asset_stage", "desired_output_role", "platform", "hard_constraints", "objectives", "budget_envelope", "evaluation_protocol", "created_by", "created_at", "schema"],
+  "properties": {
+    "context_id": {"type": "string", "minLength": 1},
+    "target_brief_ref": {"type": "string", "minLength": 1},
+    "target_brief_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "asset_family": {"type": "string", "minLength": 1},
+    "asset_stage": {"type": "string", "minLength": 1},
+    "desired_output_role": {"type": "string", "minLength": 1},
+    "platform": {"type": "string", "minLength": 1},
+    "hard_constraints": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "objectives": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "additionalProperties": true,
+        "required": ["metric_id", "direction", "kind"],
+        "properties": {
+          "metric_id": {"type": "string", "minLength": 1},
+          "direction": {"enum": ["minimize", "maximize", "informational"]},
+          "kind": {"enum": ["quality", "mechanical", "cost", "time", "risk", "rework", "retention"]}
+        }
+      }
+    },
+    "budget_envelope": {"type": "object"},
+    "evaluation_protocol": {"type": "object", "required": ["protocol_id"]},
+    "created_by": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "minLength": 1},
+    "schema": {"const": "blender-harness.context-contract.v1"}
+  }
+}
